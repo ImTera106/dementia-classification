@@ -1,0 +1,514 @@
+---
+title: "Dementia Classification With and Without MRI-Derived Features"
+subtitle: "A leakage-safe OASIS-2 machine-learning portfolio project"
+author: "Portfolio project"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    embed-resources: true
+    theme: cosmo
+    code-fold: false
+    fig-responsive: true
+jupyter: python3
+execute:
+  echo: false
+  warning: false
+  error: false
+---
+
+```{python}
+from pathlib import Path
+import json
+
+import pandas as pd
+import yaml
+from IPython.display import Markdown, display
+
+ROOT = Path("..").resolve()
+
+REQUIRED_ARTIFACTS = [
+    "outputs/data/data_assessment.json",
+    "outputs/data/split_summary.json",
+    "outputs/metrics/baseline_cv_summary.csv",
+    "outputs/tuning/tuning_summary.csv",
+    "outputs/metrics/test_metrics.csv",
+    "outputs/metrics/test_metric_bootstrap_intervals.csv",
+    "outputs/tables/feature_set_balanced_accuracy_differences.csv",
+    "outputs/tables/permutation_importance.csv",
+    "outputs/tables/logistic_coefficients.csv",
+    "outputs/tables/tree_shap_importance.csv",
+    "outputs/metrics/synthetic_quality.json",
+    "outputs/tuning/real_plus_synthetic/tuning_summary.csv",
+    "outputs/metrics/test_metrics_real_plus_synthetic.csv",
+    "outputs/metrics/training_condition_comparison.csv",
+]
+missing = [relative for relative in REQUIRED_ARTIFACTS if not (ROOT / relative).is_file()]
+if missing:
+    raise FileNotFoundError(
+        "Render requires saved project artifacts; missing: " + ", ".join(missing)
+    )
+
+
+def read_csv(relative):
+    """Read one required saved table without invoking project code."""
+    return pd.read_csv(ROOT / relative)
+
+
+def show_table(frame, *, digits=3):
+    """Display a compact artifact-derived table."""
+    display(frame.round(digits).reset_index(drop=True))
+
+
+data_assessment = json.loads(
+    (ROOT / "outputs/data/data_assessment.json").read_text(encoding="utf-8")
+)
+split_summary = json.loads(
+    (ROOT / "outputs/data/split_summary.json").read_text(encoding="utf-8")
+)
+model_config = yaml.safe_load(
+    (ROOT / "config/model_config.yaml").read_text(encoding="utf-8")
+)
+baseline = read_csv("outputs/metrics/baseline_cv_summary.csv")
+tuning = read_csv("outputs/tuning/tuning_summary.csv")
+test_metrics = read_csv("outputs/metrics/test_metrics.csv")
+intervals = read_csv("outputs/metrics/test_metric_bootstrap_intervals.csv")
+paired_differences = read_csv(
+    "outputs/tables/feature_set_balanced_accuracy_differences.csv"
+)
+permutation = read_csv("outputs/tables/permutation_importance.csv")
+coefficients = read_csv("outputs/tables/logistic_coefficients.csv")
+shap_importance = read_csv("outputs/tables/tree_shap_importance.csv")
+synthetic_quality = json.loads(
+    (ROOT / "outputs/metrics/synthetic_quality.json").read_text(encoding="utf-8")
+)
+synthetic_tuning = read_csv(
+    "outputs/tuning/real_plus_synthetic/tuning_summary.csv"
+)
+synthetic_test_metrics = read_csv(
+    "outputs/metrics/test_metrics_real_plus_synthetic.csv"
+)
+condition_comparison = read_csv(
+    "outputs/metrics/training_condition_comparison.csv"
+)
+```
+
+# Executive summary
+
+This project asks whether three structured MRI-derived measurements improve
+subject-level dementia classification beyond a compact clinical feature set.
+Five algorithms were compared under both feature settings using the same
+persistent, entirely real held-out test set.
+
+Balanced accuracy is the primary metric. With real-only training, the strongest
+held-out values were **0.866** for clinical features and **0.839** for
+clinical-imaging features. With 1:1 synthetic augmentation, the strongest
+values were **0.902** and **0.933**, respectively. Every augmented point
+estimate improved or tied its paired real-only estimate, but these exploratory
+comparisons use the same 30 previously inspected test subjects and do not
+establish that augmentation will generalize.
+
+MMSE produced the largest held-out permutation-importance decrease in every
+model/feature-set experiment. This describes model reliance in this sample; it
+does not establish causality, clinical importance, or diagnostic validity.
+
+# Data and study question
+
+The [OASIS-2 longitudinal release](https://pmc.ncbi.nlm.nih.gov/articles/PMC2895005/)
+contains MRI and associated clinical data from older adults with and without
+dementia. The source paper reports 150 subjects and 373 imaging sessions. This
+project uses the supplied longitudinal table and retains the complete row at
+each subject's highest visit number.
+
+```{python}
+subject = data_assessment["subject_level"]
+data_summary = pd.DataFrame(
+    [
+        {"Stage": "Raw longitudinal", "Rows": data_assessment["raw"]["rows"],
+         "Unique subjects": data_assessment["raw"]["unique_subjects"]},
+        {"Stage": "Final-visit subject table", "Rows": subject["rows"],
+         "Unique subjects": subject["unique_subjects"]},
+        {"Stage": "Real training partition", "Rows": split_summary["train_subjects"],
+         "Unique subjects": split_summary["train_subjects"]},
+        {"Stage": "Real held-out partition", "Rows": split_summary["test_subjects"],
+         "Unique subjects": split_summary["test_subjects"]},
+    ]
+)
+show_table(data_summary, digits=0)
+```
+
+The binary target maps `Nondemented` to 0 and both `Demented` and `Converted`
+to 1. Because predictors such as MMSE are measured contemporaneously with the
+selected visit and outcome, this is a **classification** analysis—not early
+detection, conversion forecasting, or prognosis.
+
+## Feature settings
+
+```{python}
+feature_rows = []
+for name, definition in model_config["feature_sets"].items():
+    feature_rows.append(
+        {
+            "Feature setting": name,
+            "Numeric predictors": ", ".join(definition["numeric"]),
+            "Categorical predictors": ", ".join(definition["categorical"]),
+        }
+    )
+show_table(pd.DataFrame(feature_rows))
+```
+
+Raw numeric `education_years` is retained. Identifiers, original diagnostic
+group, visit metadata, handedness, and CDR are excluded from predictors. CDR is
+treated as outcome-defining leakage.
+
+# Leakage-safe experimental design
+
+```{mermaid}
+flowchart LR
+  A["373 longitudinal visits"] --> B["Deterministic cleaning"]
+  B --> C["150 final-visit subjects"]
+  C --> D["120 real training subjects"]
+  C --> E["30 real held-out subjects"]
+  D --> F["Fold-local imputation, encoding, and scaling"]
+  D --> S["Feature-set-specific, fold-local synthesis"]
+  S --> F
+  F --> G["Repeated stratified CV and tuning"]
+  G --> H["Fixed final pipelines"]
+  H --> I["One held-out evaluation"]
+  E --> I
+  I --> J["Bootstrap uncertainty and explanation"]
+```
+
+Subjects are split after deterministic cleaning and final-visit selection but
+before learned preprocessing. Imputation, encoding, and scaling remain inside
+scikit-learn pipelines and are learned separately within each training fold.
+No subject appears in both partitions.
+
+The 120-subject training partition contains 58 class-0 and 62 class-1
+subjects. The held-out partition contains 14 class-0 and 16 class-1 subjects.
+The same held-out subjects are used for every final experiment.
+
+# Baselines and training-only model development
+
+The baseline used repeated stratified five-fold cross-validation with 10
+repeats. Hyperparameter selection used 15 shared training-only folds (five
+folds repeated three times), with balanced accuracy as the selection metric.
+Preprocessing was fitted inside each fold.
+
+```{python}
+baseline_table = baseline[
+    ["algorithm", "feature_set", "balanced_accuracy_mean", "balanced_accuracy_std",
+     "roc_auc_mean", "roc_auc_std"]
+].rename(
+    columns={
+        "algorithm": "Algorithm",
+        "feature_set": "Feature setting",
+        "balanced_accuracy_mean": "Balanced accuracy mean",
+        "balanced_accuracy_std": "Balanced accuracy SD",
+        "roc_auc_mean": "ROC AUC mean",
+        "roc_auc_std": "ROC AUC SD",
+    }
+)
+show_table(baseline_table)
+```
+
+```{python}
+tuning_table = tuning[
+    ["algorithm", "feature_set", "balanced_accuracy_mean", "balanced_accuracy_std",
+     "roc_auc_mean", "roc_auc_std"]
+].rename(
+    columns={
+        "algorithm": "Algorithm",
+        "feature_set": "Feature setting",
+        "balanced_accuracy_mean": "Balanced accuracy mean",
+        "balanced_accuracy_std": "Balanced accuracy SD",
+        "roc_auc_mean": "ROC AUC mean",
+        "roc_auc_std": "ROC AUC SD",
+    }
+)
+show_table(tuning_table)
+```
+
+# Fixed held-out evaluation
+
+The selected pipelines were fitted on all 120 real training subjects and then
+evaluated on the persistent 30-subject real test partition. No threshold was
+tuned; standard estimator predictions were used.
+
+```{python}
+held_out_table = test_metrics[
+    ["algorithm", "feature_set", "balanced_accuracy", "roc_auc", "sensitivity",
+     "specificity", "precision", "f1"]
+].rename(
+    columns={
+        "algorithm": "Algorithm",
+        "feature_set": "Feature setting",
+        "balanced_accuracy": "Balanced accuracy",
+        "roc_auc": "ROC AUC",
+        "sensitivity": "Sensitivity",
+        "specificity": "Specificity",
+        "precision": "Precision",
+        "f1": "F1",
+    }
+)
+show_table(held_out_table)
+```
+
+![Balanced accuracy for the ten fixed held-out experiments.](../outputs/figures/test_balanced_accuracy.png){fig-alt="Grouped bar chart comparing balanced accuracy for five algorithms under clinical and clinical-imaging feature settings."}
+
+![Held-out ROC curves.](../outputs/figures/test_roc_curves.png){fig-alt="ROC curves for the five algorithms in separate clinical and clinical-imaging panels."}
+
+These estimates describe only this small held-out sample. They are not a basis
+for clinical or deployment claims.
+
+# Synthetic augmentation experiment
+
+Phase 8 added one synthetic subject for every real training subject. Separate
+Gaussian-copula generators were used for the two feature settings: the clinical
+generator never received MRI-derived variables. During tuning, each generator
+was fitted only on the real subjects in a fold's training subset; the fold's
+validation subjects remained entirely real. Target-conditioned sampling
+preserved the observed class counts rather than artificially balancing them.
+
+For final training, each generator was fitted on the 120 real training subjects
+and produced 120 unique synthetic subjects: 58 class 0 and 62 class 1. No
+complete synthetic record exactly matched a real training record. The held-out
+test set was never used for synthesis.
+
+```{python}
+quality_rows = []
+for feature_set, values in synthetic_quality["reports"].items():
+    quality_rows.append(
+        {
+            "Feature setting": feature_set,
+            "Real rows": values["real_rows"],
+            "Synthetic rows": values["synthetic_rows"],
+            "Exact real matches": values["exact_real_matches"],
+            "Diagnostic score": values["diagnostic_score"],
+            "Quality score": values["quality_score"],
+        }
+    )
+show_table(pd.DataFrame(quality_rows))
+```
+
+The SDV diagnostic checks structure and value validity. The quality score
+summarizes marginal and pairwise statistical similarity; it is not a privacy
+guarantee and does not guarantee predictive utility.
+
+```{python}
+augmented_table = synthetic_test_metrics[
+    ["algorithm", "feature_set", "balanced_accuracy", "roc_auc", "sensitivity",
+     "specificity", "precision", "f1"]
+].rename(
+    columns={
+        "algorithm": "Algorithm", "feature_set": "Feature setting",
+        "balanced_accuracy": "Balanced accuracy", "roc_auc": "ROC AUC",
+        "sensitivity": "Sensitivity", "specificity": "Specificity",
+        "precision": "Precision", "f1": "F1",
+    }
+)
+show_table(augmented_table)
+```
+
+![Balanced accuracy across both training conditions.](../outputs/figures/training_condition_comparison.png){fig-alt="Grouped bar chart comparing held-out balanced accuracy across five algorithms, two feature sets, and real-only versus synthetically augmented training."}
+
+```{python}
+delta_table = condition_comparison.loc[
+    condition_comparison["training_condition"] == "real_plus_synthetic",
+    ["algorithm", "feature_set", "balanced_accuracy_delta_vs_real_only"],
+].rename(
+    columns={
+        "algorithm": "Algorithm", "feature_set": "Feature setting",
+        "balanced_accuracy_delta_vs_real_only": "Augmented - real-only",
+    }
+)
+show_table(delta_table)
+```
+
+The largest point-estimate difference was +0.188 for the clinical-imaging
+decision tree. These paired differences are descriptive. The augmentation
+design and test set have not been evaluated in an independent cohort.
+
+# Robustness and the MRI comparison
+
+Stratified subject-level bootstrap resampling preserved the 14/16 class counts
+in each of 5,000 replicates. Identical subject draws were used across models,
+allowing paired clinical-imaging-minus-clinical comparisons.
+
+```{python}
+ba_intervals = intervals.loc[
+    intervals["metric"] == "balanced_accuracy",
+    ["algorithm", "feature_set", "estimate", "lower_bound", "upper_bound"],
+].rename(
+    columns={
+        "algorithm": "Algorithm",
+        "feature_set": "Feature setting",
+        "estimate": "Estimate",
+        "lower_bound": "95% lower",
+        "upper_bound": "95% upper",
+    }
+)
+show_table(ba_intervals)
+```
+
+![Balanced accuracy with percentile bootstrap intervals.](../outputs/figures/test_balanced_accuracy_intervals.png){fig-alt="Point estimates and broad 95 percent bootstrap intervals for all ten held-out experiments."}
+
+```{python}
+paired_table = paired_differences[
+    ["algorithm", "estimate", "lower_bound", "upper_bound"]
+].rename(
+    columns={
+        "algorithm": "Algorithm",
+        "estimate": "Imaging - clinical",
+        "lower_bound": "95% lower",
+        "upper_bound": "95% upper",
+    }
+)
+show_table(paired_table)
+```
+
+![Paired imaging-minus-clinical balanced-accuracy differences.](../outputs/figures/feature_set_balanced_accuracy_differences.png){fig-alt="Five paired feature-set differences whose intervals all cross or touch zero."}
+
+Every paired interval includes zero. The available evidence therefore does not
+show a stable held-out advantage from adding eTIV, nWBV, and ASF.
+
+# Model explanations
+
+Permutation importance provides one original-feature comparison across all 10
+fixed models. It measures the held-out balanced-accuracy change after
+permuting one feature; it does not refit a model or select features.
+
+![Clinical permutation-importance matrix.](../outputs/figures/explain/permutation_importance_clinical.png){fig-alt="Feature-by-algorithm heatmap showing MMSE as the largest clinical permutation importance."}
+
+![Clinical-imaging permutation-importance matrix.](../outputs/figures/explain/permutation_importance_clinical_imaging.png){fig-alt="Feature-by-algorithm heatmap showing MMSE as the largest clinical-imaging permutation importance."}
+
+```{python}
+top_permutation = (
+    permutation.sort_values(
+        ["algorithm", "feature_set", "importance_mean"],
+        ascending=[True, True, False],
+        kind="stable",
+    )
+    .groupby(["algorithm", "feature_set"], as_index=False, sort=True)
+    .head(1)[["algorithm", "feature_set", "feature", "importance_mean", "importance_std"]]
+    .rename(
+        columns={
+            "algorithm": "Algorithm",
+            "feature_set": "Feature setting",
+            "feature": "Top feature",
+            "importance_mean": "Mean decrease",
+            "importance_std": "SD",
+        }
+    )
+)
+show_table(top_permutation)
+```
+
+MMSE is the largest permutation feature in every experiment. Negative values
+elsewhere mean permutation sometimes improved this small held-out score; they
+are not evidence that a feature is protective or should be removed.
+
+## Logistic coefficients
+
+Numeric coefficients are expressed per one training-standard-deviation change.
+The sex term is one male-versus-female contrast. Exponentiated coefficients are
+adjusted model odds ratios, not causal effects.
+
+![Logistic coefficient comparison.](../outputs/figures/explain/logistic_coefficients.png){fig-alt="Two panels showing signed standardized logistic coefficients for clinical and clinical-imaging models."}
+
+```{python}
+coefficient_table = coefficients[
+    ["feature_set", "term", "coefficient", "odds_ratio", "unit"]
+].rename(
+    columns={
+        "feature_set": "Feature setting",
+        "term": "Term",
+        "coefficient": "Coefficient",
+        "odds_ratio": "Odds ratio",
+        "unit": "Unit",
+    }
+)
+show_table(coefficient_table)
+```
+
+## Tree SHAP
+
+Tree SHAP [assigns additive feature contributions to individual model
+predictions](https://papers.neurips.cc/paper_files/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html).
+The decision-tree and random-forest explanations use class-1 probability units;
+XGBoost uses raw-margin units. Magnitudes are not compared across these output
+scales.
+
+```{python}
+top_shap = (
+    shap_importance.sort_values(
+        ["algorithm", "feature_set", "mean_absolute_shap"],
+        ascending=[True, True, False],
+        kind="stable",
+    )
+    .groupby(["algorithm", "feature_set"], as_index=False, sort=True)
+    .head(3)
+    .rename(
+        columns={
+            "algorithm": "Algorithm",
+            "feature_set": "Feature setting",
+            "feature": "Feature",
+            "output_scale": "Output scale",
+            "mean_absolute_shap": "Mean absolute SHAP",
+        }
+    )
+)
+show_table(top_shap[["Algorithm", "Feature setting", "Feature", "Output scale", "Mean absolute SHAP"]])
+```
+
+![XGBoost SHAP importance for clinical predictors.](../outputs/figures/explain/tree_shap/xgboost_clinical.png){fig-alt="Mean absolute raw-margin SHAP contributions for the clinical XGBoost model."}
+
+![XGBoost SHAP importance with imaging predictors.](../outputs/figures/explain/tree_shap/xgboost_clinical_imaging.png){fig-alt="Mean absolute raw-margin SHAP contributions for the clinical-imaging XGBoost model."}
+
+nWBV is prominent in the imaging tree-SHAP summaries but weak or negative
+under permutation importance. This method-dependent pattern is compatible with
+correlated predictors sharing information; it is not stable evidence that nWBV
+has an independent or causal role.
+
+# Limitations
+
+- The held-out partition contains only 30 subjects, producing broad and
+  sample-specific uncertainty.
+- The highest-visit design is cross-sectional at the subject level and does
+  not model trajectories or future conversion.
+- MMSE is contemporaneous with the target and may dominate other predictors;
+  the project does not claim screening performance without cognitive testing.
+- Converted subjects are assigned to the dementia class by the confirmed
+  project definition.
+- Permutation importance can understate correlated variables.
+- SHAP explains model behavior, not clinical importance, validity, or
+  causality.
+- No subgroup analysis, calibration study, externally validated threshold, or
+  independent cohort evaluation was performed.
+- Synthetic quality is based on only 120 real training subjects per generator;
+  synthetic data may reproduce biases or reveal patterns from the source data
+  and are not a privacy mechanism.
+
+# Reproducibility
+
+The canonical environment requires Python 3.12+, XGBoost 3.4.0, SHAP 0.52.0,
+and SDV 1.37.3. The implementation uses scikit-learn pipelines
+([Pedregosa et al., 2011](https://www.jmlr.org/papers/v12/pedregosa11a.html)),
+XGBoost ([Chen and Guestrin,
+2016](https://arxiv.org/abs/1603.02754)), and SHAP ([Lundberg and Lee,
+2017](https://papers.neurips.cc/paper_files/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html)).
+
+Rendering this document reads the saved JSON, CSV, and PNG artifacts above. It
+does not import project modeling modules, load fitted models, or rerun cleaning,
+tuning, training, held-out evaluation, bootstrap validation, or explanation.
+
+# Conclusion
+
+This project demonstrates a reproducible, leakage-aware comparison of dementia
+classification with and without structured MRI-derived variables and with and
+without synthetic training augmentation. Augmentation improved or tied all ten
+paired held-out point estimates, while the real-only bootstrap analysis did not
+establish an MRI benefit. The small, reused test sample and absence of external
+validation make these findings exploratory—not clinical evidence, a privacy
+claim, or a diagnostic system.

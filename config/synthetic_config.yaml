@@ -1,0 +1,14 @@
+training_condition: real_plus_synthetic
+required_sdv_version: 1.37.3
+
+synthesizer:
+  method: gaussian_copula
+  synthetic_to_real_ratio: 1.0
+  preserve_target_counts: true
+  enforce_min_max_values: true
+  enforce_rounding: true
+
+validation:
+  require_unique_subject_ids: true
+  reject_exact_real_matches: true
+  require_sdv_diagnostic_score: 1.0

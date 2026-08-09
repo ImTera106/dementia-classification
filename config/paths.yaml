@@ -1,0 +1,58 @@
+project_root: .
+data:
+  raw: data/raw/longitudinal.csv
+  cleaned: data/cleaned/visits_cleaned.csv
+  subject_split: data/cleaned/subject_split.csv
+  train: data/processed/train_real.csv
+  test: data/processed/test_real.csv
+  synthetic_clinical: data/synthetic/train_synthetic_clinical.csv
+  synthetic_clinical_imaging: data/synthetic/train_synthetic_clinical_imaging.csv
+  combined_train_clinical: data/processed/train_real_plus_synthetic_clinical.csv
+  combined_train_clinical_imaging: data/processed/train_real_plus_synthetic_clinical_imaging.csv
+
+models_dir: models
+model_manifest: models/real_only/model_manifest.json
+synthetic_model_manifest: models/real_plus_synthetic/model_manifest.json
+outputs:
+  data_assessment: outputs/data/data_assessment.json
+  split_summary: outputs/data/split_summary.json
+  baseline_fold_metrics: outputs/metrics/baseline_cv_folds.csv
+  baseline_summary: outputs/metrics/baseline_cv_summary.csv
+  tuning_cv_results: outputs/tuning/tuning_cv_results.csv
+  tuning_summary: outputs/tuning/tuning_summary.csv
+  tuning_best_parameters: outputs/tuning/best_parameters.json
+  synthetic_tuning_cv_results: outputs/tuning/real_plus_synthetic/tuning_cv_results.csv
+  synthetic_tuning_summary: outputs/tuning/real_plus_synthetic/tuning_summary.csv
+  synthetic_tuning_best_parameters: outputs/tuning/real_plus_synthetic/best_parameters.json
+  synthetic_quality: outputs/metrics/synthetic_quality.json
+  synthetic_test_metrics: outputs/metrics/test_metrics_real_plus_synthetic.csv
+  synthetic_test_predictions: outputs/predictions/test_predictions_real_plus_synthetic.csv
+  synthetic_test_confusion_matrices: outputs/tables/test_confusion_matrices_real_plus_synthetic.csv
+  synthetic_test_balanced_accuracy_figure: outputs/figures/test_balanced_accuracy_real_plus_synthetic.png
+  synthetic_test_roc_figure: outputs/figures/test_roc_curves_real_plus_synthetic.png
+  training_condition_comparison: outputs/metrics/training_condition_comparison.csv
+  training_condition_comparison_figure: outputs/figures/training_condition_comparison.png
+  test_metrics: outputs/metrics/test_metrics.csv
+  test_predictions: outputs/predictions/test_predictions.csv
+  test_confusion_matrices: outputs/tables/test_confusion_matrices.csv
+  test_balanced_accuracy_figure: outputs/figures/test_balanced_accuracy.png
+  test_roc_figure: outputs/figures/test_roc_curves.png
+  test_metric_bootstrap_intervals: outputs/metrics/test_metric_bootstrap_intervals.csv
+  feature_set_balanced_accuracy_differences: outputs/tables/feature_set_balanced_accuracy_differences.csv
+  test_balanced_accuracy_intervals_figure: outputs/figures/test_balanced_accuracy_intervals.png
+  feature_set_balanced_accuracy_differences_figure: outputs/figures/feature_set_balanced_accuracy_differences.png
+  permutation_importance: outputs/tables/permutation_importance.csv
+  logistic_coefficients: outputs/tables/logistic_coefficients.csv
+  tree_shap_importance: outputs/tables/tree_shap_importance.csv
+  tree_shap_values: outputs/tables/tree_shap_values.csv
+  permutation_importance_clinical_figure: outputs/figures/explain/permutation_importance_clinical.png
+  permutation_importance_clinical_imaging_figure: outputs/figures/explain/permutation_importance_clinical_imaging.png
+  logistic_coefficients_figure: outputs/figures/explain/logistic_coefficients.png
+  tree_shap_figures_dir: outputs/figures/explain/tree_shap
+  model_compare: outputs/metrics/models_comparison.csv
+  model_parameters: outputs/metrics/model_parameters.json
+
+  figures_dir: outputs/figures
+  tables_dir: outputs/tables
+  logs_dir: outputs/logs
+report: report/report.qmd

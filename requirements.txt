@@ -1,0 +1,12 @@
+# Python >=3.12 is required by XGBoost 3.4.0 and SHAP 0.52.0.
+pandas>=2.2,<4.0
+numpy>=1.26,<3.0
+scikit-learn>=1.5,<2.0
+xgboost==3.4.0
+shap==0.52.0
+sdv==1.37.3
+PyYAML>=6.0,<7.0
+joblib>=1.4,<2.0
+matplotlib>=3.9,<4.0
+pytest>=8.0,<10.0
+jupyter>=1.1,<2.0

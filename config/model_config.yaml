@@ -1,0 +1,79 @@
+
+
+
+
+random_state: 123
+
+split:
+  test_size: 0.20
+  stratify: true
+  subject_id_column: subject_id
+  target_column: dementia
+
+cross_validation:
+  method: repeated_stratified_kfold
+  n_splits: 5
+  n_repeats: 10
+  shuffle: true
+
+preprocessing:
+  numeric_imputer:
+    strategy: median
+  categorical_imputer:
+    strategy: most_frequent
+  one_hot_encoder:
+    handle_unknown: ignore
+  scale_numeric: true
+
+baseline:
+  training_condition: real_only
+  algorithms:
+    dummy:
+      strategy: most_frequent
+    logistic_regression:
+      regularization: l2
+      solver: lbfgs
+      C: 1.0
+      max_iter: 1000
+  metrics:
+    primary: balanced_accuracy
+    secondary:
+      - roc_auc
+      - sensitivity
+      - specificity
+      - precision
+      - f1
+
+feature_definitions: src/features.py
+
+target_mapping:
+  Nondemented: 0
+  Demented: 1
+  Converted: 1
+
+feature_sets:
+  clinical:
+    numeric:
+      - age
+      - education_years
+      - ses
+      - mmse
+
+    categorical:
+      - sex
+  clinical_imaging:
+    numeric:
+      - age
+      - education_years
+      - ses
+      - mmse
+      - etiv
+      - nwbv
+      - asf
+
+    categorical:
+      - sex
+
+training_conditions:
+  - real_only
+  - real_plus_synthetic

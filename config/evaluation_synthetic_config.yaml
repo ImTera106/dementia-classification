@@ -1,0 +1,14 @@
+training_condition: real_plus_synthetic
+positive_label: 1
+
+metrics:
+  primary: balanced_accuracy
+  secondary:
+    - roc_auc
+    - sensitivity
+    - specificity
+    - precision
+    - f1
+
+figures:
+  dpi: 160
