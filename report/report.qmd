@@ -43,6 +43,8 @@ REQUIRED_ARTIFACTS = [
     "outputs/tuning/real_plus_synthetic/tuning_summary.csv",
     "outputs/metrics/test_metrics_real_plus_synthetic.csv",
     "outputs/metrics/training_condition_comparison.csv",
+    "outputs/metrics/test_metric_bootstrap_intervals_real_plus_synthetic.csv",
+    "outputs/tables/training_condition_balanced_accuracy_differences.csv",
 ]
 missing = [relative for relative in REQUIRED_ARTIFACTS if not (ROOT / relative).is_file()]
 if missing:
@@ -92,6 +94,12 @@ synthetic_test_metrics = read_csv(
 condition_comparison = read_csv(
     "outputs/metrics/training_condition_comparison.csv"
 )
+augmented_intervals = read_csv(
+    "outputs/metrics/test_metric_bootstrap_intervals_real_plus_synthetic.csv"
+)
+condition_differences = read_csv(
+    "outputs/tables/training_condition_balanced_accuracy_differences.csv"
+)
 ```
 
 # Executive summary
@@ -105,9 +113,11 @@ Balanced accuracy is the primary metric. With real-only training, the strongest
 held-out values were **0.866** for clinical features and **0.839** for
 clinical-imaging features. With 1:1 synthetic augmentation, the strongest
 values were **0.902** and **0.933**, respectively. Every augmented point
-estimate improved or tied its paired real-only estimate, but these exploratory
-comparisons use the same 30 previously inspected test subjects and do not
-establish that augmentation will generalize.
+estimate improved or tied its paired real-only estimate. Nine of ten paired
+95% bootstrap intervals included zero; only decision-tree/clinical-imaging
+excluded zero (+0.188, interval +0.045 to +0.348). These exploratory,
+unadjusted comparisons use the same 30 previously inspected test subjects and
+do not establish that augmentation will generalize.
 
 MMSE produced the largest held-out permutation-importance decrease in every
 model/feature-set experiment. This describes model reliance in this sample; it
@@ -327,14 +337,59 @@ show_table(delta_table)
 ```
 
 The largest point-estimate difference was +0.188 for the clinical-imaging
-decision tree. These paired differences are descriptive. The augmentation
-design and test set have not been evaluated in an independent cohort.
+decision tree.
+
+```{python}
+augmented_ba_intervals = augmented_intervals.loc[
+    augmented_intervals["metric"] == "balanced_accuracy",
+    ["algorithm", "feature_set", "estimate", "lower_bound", "upper_bound"],
+].rename(
+    columns={
+        "algorithm": "Algorithm",
+        "feature_set": "Feature setting",
+        "estimate": "Estimate",
+        "lower_bound": "95% lower",
+        "upper_bound": "95% upper",
+    }
+)
+show_table(augmented_ba_intervals)
+```
+
+![Augmented balanced accuracy with percentile bootstrap intervals.](../outputs/figures/test_balanced_accuracy_intervals_real_plus_synthetic.png){fig-alt="Point estimates and broad 95 percent percentile-bootstrap intervals for the ten augmented held-out experiments."}
+
+```{python}
+condition_interval_table = condition_differences[
+    ["algorithm", "feature_set", "estimate", "lower_bound", "upper_bound",
+     "interval_includes_zero"]
+].rename(
+    columns={
+        "algorithm": "Algorithm",
+        "feature_set": "Feature setting",
+        "estimate": "Augmented - real-only",
+        "lower_bound": "95% lower",
+        "upper_bound": "95% upper",
+        "interval_includes_zero": "Includes zero",
+    }
+)
+show_table(condition_interval_table)
+```
+
+![Paired augmented-minus-real-only balanced-accuracy differences.](../outputs/figures/training_condition_balanced_accuracy_differences.png){fig-alt="Ten paired augmented-minus-real-only balanced-accuracy differences with 95 percent percentile-bootstrap intervals and a zero reference line."}
+
+Identical class-stratified subject draws were used across training conditions.
+Nine of ten intervals included zero. Only the decision-tree/clinical-imaging
+interval excluded zero, at +0.188 (95% percentile interval +0.045 to +0.348).
+These are unadjusted intervals conditional on fixed models, one synthetic run,
+and the same previously inspected 30-subject test set. They do not capture
+training, tuning, synthesis, or external-population variability and do not
+establish a general augmentation benefit.
 
 # Robustness and the MRI comparison
 
-Stratified subject-level bootstrap resampling preserved the 14/16 class counts
-in each of 5,000 replicates. Identical subject draws were used across models,
-allowing paired clinical-imaging-minus-clinical comparisons.
+For the real-only feature-set comparison, stratified subject-level bootstrap
+resampling preserved the 14/16 class counts in each of 5,000 replicates.
+Identical subject draws were used across models, allowing paired
+clinical-imaging-minus-clinical comparisons.
 
 ```{python}
 ba_intervals = intervals.loc[
@@ -508,7 +563,8 @@ tuning, training, held-out evaluation, bootstrap validation, or explanation.
 This project demonstrates a reproducible, leakage-aware comparison of dementia
 classification with and without structured MRI-derived variables and with and
 without synthetic training augmentation. Augmentation improved or tied all ten
-paired held-out point estimates, while the real-only bootstrap analysis did not
-establish an MRI benefit. The small, reused test sample and absence of external
-validation make these findings exploratory—not clinical evidence, a privacy
-claim, or a diagnostic system.
+paired held-out point estimates, but nine paired augmentation intervals included
+zero. The one interval excluding zero remains unadjusted and conditional on a
+small, reused test sample. The real-only bootstrap analysis also did not
+establish an MRI benefit. These findings remain exploratory—not clinical
+evidence, a privacy claim, or a diagnostic system.

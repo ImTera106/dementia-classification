@@ -12,7 +12,9 @@ import pandas as pd
 from src.validate import (
     ValidationError,
     calculate_bootstrap_validation,
+    calculate_training_condition_bootstrap_validation,
     run_validation_pipeline,
+    run_training_condition_validation_pipeline,
 )
 
 ALGORITHMS = (
@@ -56,6 +58,11 @@ def validation_config() -> dict:
             "comparison_feature_set": "clinical_imaging",
             "metric": "balanced_accuracy",
         },
+        "training_condition_comparison": {
+            "reference_training_condition": "real_only",
+            "comparison_training_condition": "real_plus_synthetic",
+            "metric": "balanced_accuracy",
+        },
         "figures": {"dpi": 72},
     }
 
@@ -88,6 +95,18 @@ def prediction_frame() -> pd.DataFrame:
                     }
                 )
     return pd.DataFrame.from_records(records)
+
+
+def augmented_prediction_frame() -> pd.DataFrame:
+    """Return paired augmented predictions with a clinical-only improvement."""
+    frame = prediction_frame()
+    frame["training_condition"] = "real_plus_synthetic"
+    clinical = frame["feature_set"] == "clinical"
+    frame.loc[clinical, "prediction"] = frame.loc[clinical, "target"]
+    frame.loc[clinical, "score"] = np.where(
+        frame.loc[clinical, "target"] == 1, 0.9, 0.1
+    )
+    return frame
 
 
 class ValidateTests(unittest.TestCase):
@@ -128,6 +147,82 @@ class ValidateTests(unittest.TestCase):
             }
             paths = run_validation_pipeline(
                 predictions_path,
+                validation_config=validation_config(),
+                evaluation_config=evaluation_config(),
+                output_paths=output_paths,
+            )
+            self.assertEqual(len(paths), 4)
+            self.assertTrue(all(path.is_file() for path in paths.values()))
+
+    def test_training_condition_differences_are_paired_and_reproducible(self) -> None:
+        first_intervals, first_differences = (
+            calculate_training_condition_bootstrap_validation(
+                prediction_frame(),
+                augmented_prediction_frame(),
+                validation_config(),
+                evaluation_config(),
+            )
+        )
+        second_intervals, second_differences = (
+            calculate_training_condition_bootstrap_validation(
+                prediction_frame(),
+                augmented_prediction_frame(),
+                validation_config(),
+                evaluation_config(),
+            )
+        )
+        pd.testing.assert_frame_equal(first_intervals, second_intervals)
+        pd.testing.assert_frame_equal(first_differences, second_differences)
+        self.assertEqual(len(first_intervals), 60)
+        self.assertEqual(len(first_differences), 10)
+        self.assertEqual(
+            set(first_intervals["training_condition"]),
+            {"real_plus_synthetic"},
+        )
+        clinical = first_differences["feature_set"] == "clinical"
+        self.assertTrue((first_differences.loc[clinical, "estimate"] > 0).all())
+        self.assertTrue(
+            (first_differences.loc[~clinical, "estimate"] == 0).all()
+        )
+        self.assertIn("interval_includes_zero", first_differences.columns)
+        self.assertNotIn("accuracy", set(first_intervals["metric"]))
+
+    def test_training_condition_subject_or_target_mismatch_is_rejected(self) -> None:
+        for mismatch in ("subject", "target"):
+            augmented = augmented_prediction_frame()
+            if mismatch == "subject":
+                augmented.loc[augmented["subject_id"] == "T0", "subject_id"] = "TX"
+            else:
+                augmented.loc[augmented["subject_id"] == "T0", "target"] = 1
+            with self.subTest(mismatch=mismatch), self.assertRaisesRegex(
+                ValidationError, "identical subjects and targets"
+            ):
+                calculate_training_condition_bootstrap_validation(
+                    prediction_frame(),
+                    augmented,
+                    validation_config(),
+                    evaluation_config(),
+                )
+
+    def test_training_condition_runner_saves_two_tables_and_figures(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reference_path = root / "reference.csv"
+            comparison_path = root / "comparison.csv"
+            prediction_frame().to_csv(reference_path, index=False)
+            augmented_prediction_frame().to_csv(comparison_path, index=False)
+            output_paths = {
+                "synthetic_test_metric_bootstrap_intervals": root / "intervals.csv",
+                "training_condition_balanced_accuracy_differences": root
+                / "differences.csv",
+                "synthetic_test_balanced_accuracy_intervals_figure": root
+                / "intervals.png",
+                "training_condition_balanced_accuracy_differences_figure": root
+                / "differences.png",
+            }
+            paths = run_training_condition_validation_pipeline(
+                reference_path,
+                comparison_path,
                 validation_config=validation_config(),
                 evaluation_config=evaluation_config(),
                 output_paths=output_paths,

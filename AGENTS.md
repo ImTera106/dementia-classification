@@ -51,6 +51,9 @@ All experiments must use the same held-out, entirely real test set.
 - Every evaluation, explanation, or inference path that loads a saved sklearn
   pipeline must require the manifest's exact scikit-learn runtime version, plus
   the exact model-library version where applicable.
+- Training-condition uncertainty comparisons must align the same held-out
+  subjects and targets, reuse identical stratified bootstrap draws, and remain
+  read-only with respect to fitted models and predictions.
 
 ## Repository conventions
 - Reusable code: `src/`

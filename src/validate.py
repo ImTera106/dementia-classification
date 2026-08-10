@@ -1,4 +1,4 @@
-"""Quantify uncertainty in fixed Phase 4 held-out predictions without refitting."""
+"""Quantify uncertainty in fixed held-out predictions without refitting."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from src.utils.metrics import SUPPORTED_METRICS, calculate_classification_metric
 from src.utils.plotting import (
     plot_balanced_accuracy_intervals,
     plot_feature_set_differences,
+    plot_training_condition_differences,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -97,6 +98,33 @@ def resolve_validation_settings(
     }
 
 
+def resolve_training_condition_comparison_settings(
+    validation_config: dict[str, Any], evaluation_config: dict[str, Any]
+) -> dict[str, Any]:
+    """Validate the paired real-plus-synthetic versus real-only comparison."""
+    settings = resolve_validation_settings(validation_config, evaluation_config)
+    comparison = validation_config.get("training_condition_comparison")
+    if not isinstance(comparison, dict):
+        raise ValidationError("training_condition_comparison must be a mapping")
+    reference = comparison.get("reference_training_condition")
+    compared = comparison.get("comparison_training_condition")
+    if reference != "real_only" or compared != "real_plus_synthetic":
+        raise ValidationError(
+            "Training-condition comparison must be real_plus_synthetic minus "
+            "real_only"
+        )
+    if comparison.get("metric") != "balanced_accuracy":
+        raise ValidationError(
+            "Training-condition comparison metric must be balanced_accuracy"
+        )
+    return {
+        **settings,
+        "reference_training_condition": reference,
+        "comparison_training_condition": compared,
+        "training_condition_comparison_metric": "balanced_accuracy",
+    }
+
+
 def validate_prediction_frame(
     predictions: pd.DataFrame, settings: dict[str, Any]
 ) -> pd.DataFrame:
@@ -108,7 +136,10 @@ def validate_prediction_frame(
     if frame.empty or frame[list(PREDICTION_COLUMNS)].isna().any().any():
         raise ValidationError("Prediction artifact must be nonempty and complete")
     if set(frame["training_condition"]) != {settings["training_condition"]}:
-        raise ValidationError("Predictions must use training_condition real_only")
+        raise ValidationError(
+            "Predictions must use training_condition "
+            f"{settings['training_condition']}"
+        )
     if not set(frame["target"]).issubset({0, 1}) or set(frame["target"]) != {0, 1}:
         raise ValidationError("Prediction targets must contain both binary classes")
     if not set(frame["prediction"]).issubset({0, 1}):
@@ -119,6 +150,7 @@ def validate_prediction_frame(
     if frame.duplicated(keys).any():
         raise ValidationError("Duplicate algorithm/feature-set/subject predictions")
 
+    frame["subject_id"] = frame["subject_id"].astype(str)
     subject_targets = frame.groupby("subject_id")["target"].nunique()
     if (subject_targets != 1).any():
         raise ValidationError("Targets must be consistent for every subject")
@@ -193,31 +225,28 @@ def _bootstrap_metric_values(
     }
 
 
-def calculate_bootstrap_validation(
-    predictions: pd.DataFrame,
-    validation_config: dict[str, Any],
-    evaluation_config: dict[str, Any],
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Calculate fixed-model intervals and paired feature-set differences."""
-    settings = resolve_validation_settings(validation_config, evaluation_config)
-    frame = validate_prediction_frame(predictions, settings)
-    subject_target = (
+def _subject_target_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return one target-aligned row per sorted held-out subject."""
+    return (
         frame[["subject_id", "target"]]
         .drop_duplicates()
         .sort_values("subject_id", kind="stable")
         .reset_index(drop=True)
     )
+
+
+def _calculate_condition_bootstrap(
+    frame: pd.DataFrame,
+    settings: dict[str, Any],
+    subject_target: pd.DataFrame,
+    indices: np.ndarray,
+) -> tuple[pd.DataFrame, dict[tuple[str, str, str], np.ndarray]]:
+    """Calculate one condition's estimates using supplied shared subject draws."""
     target = subject_target["target"].to_numpy(dtype=int)
-    indices = _stratified_bootstrap_indices(
-        target,
-        n_resamples=settings["n_resamples"],
-        random_state=settings["random_state"],
-    )
     alpha = 1 - settings["confidence_level"]
     quantiles = [alpha / 2, 1 - alpha / 2]
     interval_records: list[dict[str, Any]] = []
     bootstrap_values: dict[tuple[str, str, str], np.ndarray] = {}
-
     for (algorithm, feature_set), group in frame.groupby(
         ["algorithm", "feature_set"], sort=True
     ):
@@ -230,12 +259,14 @@ def calculate_bootstrap_validation(
         values = _bootstrap_metric_values(target, prediction, score, indices)
         for metric in settings["metric_names"]:
             lower, upper = np.quantile(values[metric], quantiles)
-            bootstrap_values[(str(algorithm), str(feature_set), metric)] = values[metric]
+            bootstrap_values[(str(algorithm), str(feature_set), metric)] = values[
+                metric
+            ]
             interval_records.append(
                 {
                     "algorithm": algorithm,
                     "feature_set": feature_set,
-                    "training_condition": "real_only",
+                    "training_condition": settings["training_condition"],
                     "metric": metric,
                     "estimate": point_metrics[metric],
                     "lower_bound": float(lower),
@@ -244,12 +275,34 @@ def calculate_bootstrap_validation(
                     "n_resamples": settings["n_resamples"],
                 }
             )
+    return pd.DataFrame.from_records(interval_records), bootstrap_values
+
+
+def calculate_bootstrap_validation(
+    predictions: pd.DataFrame,
+    validation_config: dict[str, Any],
+    evaluation_config: dict[str, Any],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Calculate fixed-model intervals and paired feature-set differences."""
+    settings = resolve_validation_settings(validation_config, evaluation_config)
+    frame = validate_prediction_frame(predictions, settings)
+    subject_target = _subject_target_frame(frame)
+    target = subject_target["target"].to_numpy(dtype=int)
+    indices = _stratified_bootstrap_indices(
+        target,
+        n_resamples=settings["n_resamples"],
+        random_state=settings["random_state"],
+    )
+    intervals, bootstrap_values = _calculate_condition_bootstrap(
+        frame, settings, subject_target, indices
+    )
+    alpha = 1 - settings["confidence_level"]
+    quantiles = [alpha / 2, 1 - alpha / 2]
 
     difference_records: list[dict[str, Any]] = []
     metric = settings["comparison_metric"]
     reference = settings["reference_feature_set"]
     compared = settings["comparison_feature_set"]
-    intervals = pd.DataFrame.from_records(interval_records)
     for algorithm in sorted(REQUIRED_ALGORITHMS):
         reference_values = bootstrap_values[(algorithm, reference, metric)]
         compared_values = bootstrap_values[(algorithm, compared, metric)]
@@ -273,6 +326,99 @@ def calculate_bootstrap_validation(
             }
         )
     return intervals, pd.DataFrame.from_records(difference_records)
+
+
+def calculate_training_condition_bootstrap_validation(
+    reference_predictions: pd.DataFrame,
+    comparison_predictions: pd.DataFrame,
+    validation_config: dict[str, Any],
+    evaluation_config: dict[str, Any],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Calculate augmented intervals and paired augmentation-effect intervals."""
+    settings = resolve_training_condition_comparison_settings(
+        validation_config, evaluation_config
+    )
+    reference_settings = {
+        **settings,
+        "training_condition": settings["reference_training_condition"],
+    }
+    comparison_settings = {
+        **settings,
+        "training_condition": settings["comparison_training_condition"],
+    }
+    reference = validate_prediction_frame(reference_predictions, reference_settings)
+    comparison = validate_prediction_frame(
+        comparison_predictions, comparison_settings
+    )
+    subject_target = _subject_target_frame(reference)
+    comparison_targets = _subject_target_frame(comparison)
+    aligned_targets = subject_target.merge(
+        comparison_targets,
+        on="subject_id",
+        how="outer",
+        suffixes=("_reference", "_comparison"),
+        indicator=True,
+        validate="one_to_one",
+    )
+    if not (aligned_targets["_merge"] == "both").all() or not (
+        aligned_targets["target_reference"]
+        == aligned_targets["target_comparison"]
+    ).all():
+        raise ValidationError(
+            "Training-condition predictions must have identical subjects and targets"
+        )
+    target = subject_target["target"].to_numpy(dtype=int)
+    indices = _stratified_bootstrap_indices(
+        target,
+        n_resamples=settings["n_resamples"],
+        random_state=settings["random_state"],
+    )
+    reference_intervals, reference_values = _calculate_condition_bootstrap(
+        reference, reference_settings, subject_target, indices
+    )
+    comparison_intervals, comparison_values = _calculate_condition_bootstrap(
+        comparison, comparison_settings, subject_target, indices
+    )
+    metric = settings["training_condition_comparison_metric"]
+    alpha = 1 - settings["confidence_level"]
+    quantiles = [alpha / 2, 1 - alpha / 2]
+    reference_estimates = reference_intervals.loc[
+        reference_intervals["metric"] == metric
+    ].set_index(["algorithm", "feature_set"])["estimate"]
+    comparison_estimates = comparison_intervals.loc[
+        comparison_intervals["metric"] == metric
+    ].set_index(["algorithm", "feature_set"])["estimate"]
+    difference_records: list[dict[str, Any]] = []
+    for algorithm in sorted(REQUIRED_ALGORITHMS):
+        for feature_set in ("clinical", "clinical_imaging"):
+            key = (algorithm, feature_set, metric)
+            differences = comparison_values[key] - reference_values[key]
+            lower, upper = np.quantile(differences, quantiles)
+            estimate = float(
+                comparison_estimates[(algorithm, feature_set)]
+                - reference_estimates[(algorithm, feature_set)]
+            )
+            difference_records.append(
+                {
+                    "algorithm": algorithm,
+                    "feature_set": feature_set,
+                    "metric": metric,
+                    "reference_training_condition": settings[
+                        "reference_training_condition"
+                    ],
+                    "comparison_training_condition": settings[
+                        "comparison_training_condition"
+                    ],
+                    "comparison": "real_plus_synthetic_minus_real_only",
+                    "estimate": estimate,
+                    "lower_bound": float(lower),
+                    "upper_bound": float(upper),
+                    "confidence_level": settings["confidence_level"],
+                    "n_resamples": settings["n_resamples"],
+                    "interval_includes_zero": bool(lower <= 0 <= upper),
+                }
+            )
+    return comparison_intervals, pd.DataFrame.from_records(difference_records)
 
 
 def run_validation_pipeline(
@@ -315,6 +461,68 @@ def run_validation_pipeline(
     return paths
 
 
+def run_training_condition_validation_pipeline(
+    reference_predictions_path: str | Path,
+    comparison_predictions_path: str | Path,
+    *,
+    validation_config: dict[str, Any],
+    evaluation_config: dict[str, Any],
+    output_paths: dict[str, Any],
+) -> dict[str, Path]:
+    """Save augmented intervals and paired condition differences from predictions."""
+    reference_path = Path(reference_predictions_path)
+    comparison_path = Path(comparison_predictions_path)
+    for path in (reference_path, comparison_path):
+        if not path.is_file():
+            raise FileNotFoundError(f"Held-out predictions not found: {path}")
+    reference_predictions = pd.read_csv(
+        reference_path, dtype={"subject_id": str}
+    )
+    comparison_predictions = pd.read_csv(
+        comparison_path, dtype={"subject_id": str}
+    )
+    intervals, differences = calculate_training_condition_bootstrap_validation(
+        reference_predictions,
+        comparison_predictions,
+        validation_config,
+        evaluation_config,
+    )
+    settings = resolve_training_condition_comparison_settings(
+        validation_config, evaluation_config
+    )
+    paths = {
+        "intervals": Path(
+            output_paths["synthetic_test_metric_bootstrap_intervals"]
+        ),
+        "differences": Path(
+            output_paths["training_condition_balanced_accuracy_differences"]
+        ),
+        "interval_figure": Path(
+            output_paths["synthetic_test_balanced_accuracy_intervals_figure"]
+        ),
+        "difference_figure": Path(
+            output_paths[
+                "training_condition_balanced_accuracy_differences_figure"
+            ]
+        ),
+    }
+    for path in paths.values():
+        path.parent.mkdir(parents=True, exist_ok=True)
+    intervals.to_csv(paths["intervals"], index=False)
+    differences.to_csv(paths["differences"], index=False)
+    plot_balanced_accuracy_intervals(
+        intervals, paths["interval_figure"], dpi=settings["dpi"]
+    )
+    plot_training_condition_differences(
+        differences, paths["difference_figure"], dpi=settings["dpi"]
+    )
+    LOGGER.info(
+        "Saved augmented intervals and %d paired training-condition differences",
+        len(differences),
+    )
+    return paths
+
+
 def parse_args() -> argparse.Namespace:
     """Parse paths for fixed-prediction robustness validation."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -325,21 +533,38 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--validation-config", type=Path, default=DEFAULT_VALIDATION_CONFIG
     )
+    parser.add_argument(
+        "--analysis",
+        choices=("real_only", "training_condition"),
+        default="real_only",
+        help="Run the original validation or the paired training-condition pass",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
-    """Run Phase 5 without loading training data or fitted model artifacts."""
+    """Run fixed-prediction validation without loading fitted model artifacts."""
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     args = parse_args()
     try:
         paths = load_yaml_config(args.paths_config)
-        run_validation_pipeline(
-            paths["outputs"]["test_predictions"],
-            validation_config=load_yaml_config(args.validation_config),
-            evaluation_config=load_yaml_config(args.evaluation_config),
-            output_paths=paths["outputs"],
-        )
+        validation_config = load_yaml_config(args.validation_config)
+        evaluation_config = load_yaml_config(args.evaluation_config)
+        if args.analysis == "real_only":
+            run_validation_pipeline(
+                paths["outputs"]["test_predictions"],
+                validation_config=validation_config,
+                evaluation_config=evaluation_config,
+                output_paths=paths["outputs"],
+            )
+        else:
+            run_training_condition_validation_pipeline(
+                paths["outputs"]["test_predictions"],
+                paths["outputs"]["synthetic_test_predictions"],
+                validation_config=validation_config,
+                evaluation_config=evaluation_config,
+                output_paths=paths["outputs"],
+            )
     except (FileNotFoundError, KeyError, OSError, TypeError, ValidationError, ValueError) as exc:
         LOGGER.error("Robustness validation failed: %s", exc)
         return 1

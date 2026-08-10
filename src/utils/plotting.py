@@ -170,6 +170,39 @@ def plot_feature_set_differences(
     return output_path
 
 
+def plot_training_condition_differences(
+    differences: pd.DataFrame, path: str | Path, *, dpi: int
+) -> Path:
+    """Plot paired augmented-minus-real-only balanced-accuracy differences."""
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    data = differences.copy()
+    data["label"] = data["algorithm"] + " | " + data["feature_set"]
+    positions = np.arange(len(data))
+    figure, axis = plt.subplots(figsize=(9, 6))
+    axis.errorbar(
+        data["estimate"],
+        positions,
+        xerr=np.vstack(
+            [
+                data["estimate"] - data["lower_bound"],
+                data["upper_bound"] - data["estimate"],
+            ]
+        ),
+        fmt="o",
+        capsize=3,
+    )
+    axis.axvline(0, color="gray", linestyle="--", linewidth=1)
+    axis.set_yticks(positions, data["label"])
+    axis.set_xlabel("Balanced accuracy difference (augmented - real-only)")
+    axis.set_title("Paired training-condition differences")
+    axis.grid(axis="x", alpha=0.25)
+    figure.tight_layout()
+    figure.savefig(output_path, dpi=dpi, bbox_inches="tight")
+    plt.close(figure)
+    return output_path
+
+
 def plot_importance_matrix(
     importance: pd.DataFrame,
     path: str | Path,

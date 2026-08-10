@@ -113,6 +113,34 @@ def test_saved_metrics_cover_twenty_experiments_without_ordinary_accuracy() -> N
     assert not comparison.duplicated(
         ["algorithm", "feature_set", "training_condition"]
     ).any()
+    intervals = pd.read_csv(
+        ROOT
+        / "outputs/metrics/test_metric_bootstrap_intervals_real_plus_synthetic.csv"
+    )
+    differences = pd.read_csv(
+        ROOT / "outputs/tables/training_condition_balanced_accuracy_differences.csv"
+    )
+    assert len(intervals) == 60
+    assert set(intervals["training_condition"]) == {"real_plus_synthetic"}
+    assert set(intervals["metric"]) == {
+        "balanced_accuracy",
+        "roc_auc",
+        "sensitivity",
+        "specificity",
+        "precision",
+        "f1",
+    }
+    assert len(differences) == 10
+    assert not differences.duplicated(["algorithm", "feature_set"]).any()
+    augmented = comparison.loc[
+        comparison["training_condition"] == "real_plus_synthetic"
+    ].set_index(["algorithm", "feature_set"])
+    paired = differences.set_index(["algorithm", "feature_set"])
+    pd.testing.assert_series_equal(
+        paired["estimate"].sort_index(),
+        augmented["balanced_accuracy_delta_vs_real_only"].sort_index(),
+        check_names=False,
+    )
 
 
 def test_repository_paths_are_relative_and_have_no_user_home_literals() -> None:

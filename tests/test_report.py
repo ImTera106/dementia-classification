@@ -64,6 +64,8 @@ class ReportTests(unittest.TestCase):
             "outputs/tuning/real_plus_synthetic/tuning_summary.csv",
             "outputs/metrics/test_metrics_real_plus_synthetic.csv",
             "outputs/metrics/training_condition_comparison.csv",
+            "outputs/metrics/test_metric_bootstrap_intervals_real_plus_synthetic.csv",
+            "outputs/tables/training_condition_balanced_accuracy_differences.csv",
         )
         for relative in required:
             self.assertIn(relative, source)
@@ -86,7 +88,7 @@ class ReportTests(unittest.TestCase):
     def test_report_image_sources_exist(self) -> None:
         source = REPORT_SOURCE.read_text(encoding="utf-8")
         relative_images = re.findall(r"!\[[^]]*\]\((\.\./outputs/[^)]+\.png)\)", source)
-        self.assertEqual(len(relative_images), 10)
+        self.assertEqual(len(relative_images), 12)
         for relative in relative_images:
             self.assertTrue((REPORT_SOURCE.parent / relative).resolve().is_file(), relative)
 
@@ -101,3 +103,12 @@ class ReportTests(unittest.TestCase):
         for text in (source, readme):
             self.assertIn(f"{best['clinical']:.3f}", text)
             self.assertIn(f"{best['clinical_imaging']:.3f}", text)
+        differences = pd.read_csv(
+            ROOT
+            / "outputs/tables/training_condition_balanced_accuracy_differences.csv"
+        )
+        excluded = differences.loc[~differences["interval_includes_zero"]]
+        self.assertEqual(len(excluded), 1)
+        row = excluded.iloc[0]
+        self.assertEqual(row["algorithm"], "decision_tree")
+        self.assertEqual(row["feature_set"], "clinical_imaging")

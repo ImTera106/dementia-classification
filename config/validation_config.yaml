@@ -12,5 +12,10 @@ comparison:
   comparison_feature_set: clinical_imaging
   metric: balanced_accuracy
 
+training_condition_comparison:
+  reference_training_condition: real_only
+  comparison_training_condition: real_plus_synthetic
+  metric: balanced_accuracy
+
 figures:
   dpi: 160

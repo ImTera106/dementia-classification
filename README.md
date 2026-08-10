@@ -16,9 +16,11 @@ With real-only training, the highest balanced accuracy on the fixed 30-subject
 real held-out partition was 0.866 for clinical features and 0.839 for
 clinical-imaging features. With 1:1 synthetic augmentation, the highest values
 were 0.902 and 0.933, respectively. All ten augmentation comparisons improved
-or tied their corresponding real-only point estimate, but these exploratory
-differences come from the same small, previously inspected test set and do not
-establish generalization or clinical benefit.
+or tied their corresponding real-only point estimate. Nine of ten paired 95%
+bootstrap intervals included zero; only decision-tree/clinical-imaging excluded
+zero (+0.188, 95% percentile interval +0.045 to +0.348). These unadjusted,
+conditional results come from the same small, previously inspected test set and
+do not establish generalization or clinical benefit.
 
 Inspect the current [Quarto report source](report/report.qmd). Generated HTML is
 intentionally not retained in the repository.
@@ -91,6 +93,7 @@ python -m src.evaluate
 python -m src.validate
 python -m src.explain
 python -m src.phase8
+python -m src.validate --analysis training_condition
 ```
 
 `src.phase8` fits synthetic generators only on real training folds during
@@ -98,6 +101,11 @@ tuning, scores on real validation folds, and reserves the same entirely real
 test subjects for final comparison. Do not iterate on models, features,
 augmentation settings, thresholds, or environment versions after inspecting
 held-out results.
+
+The final validation command reads the two saved held-out prediction files,
+uses identical class-stratified subject draws across training conditions, and
+writes augmented-model intervals plus paired augmented-minus-real-only
+balanced-accuracy intervals. It does not load or refit models.
 
 Optionally render the report locally after the saved artifacts exist:
 
