@@ -1,0 +1,6 @@
+algorithm,training_condition,metric,comparison,estimate,lower_bound,upper_bound,confidence_level,n_resamples
+decision_tree,real_only,balanced_accuracy,clinical_imaging_minus_clinical,-0.1205357142857143,-0.2901785714285714,0.044642857142857206,0.95,5000
+logistic_regression,real_only,balanced_accuracy,clinical_imaging_minus_clinical,0.0,0.0,0.0,0.95,5000
+random_forest,real_only,balanced_accuracy,clinical_imaging_minus_clinical,-0.0669642857142857,-0.1964285714285714,0.0625,0.95,5000
+svm,real_only,balanced_accuracy,clinical_imaging_minus_clinical,-0.0267857142857143,-0.125,0.0758928571428572,0.95,5000
+xgboost,real_only,balanced_accuracy,clinical_imaging_minus_clinical,-0.0267857142857143,-0.125,0.0758928571428572,0.95,5000

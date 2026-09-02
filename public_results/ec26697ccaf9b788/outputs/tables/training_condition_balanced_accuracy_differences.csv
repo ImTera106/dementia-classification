@@ -1,0 +1,11 @@
+algorithm,feature_set,metric,reference_training_condition,comparison_training_condition,comparison,estimate,lower_bound,upper_bound,confidence_level,n_resamples,interval_includes_zero
+decision_tree,clinical,balanced_accuracy,real_only,real_plus_synthetic,real_plus_synthetic_minus_real_only,0.0357142857142857,-0.10267857142857151,0.1785714285714286,0.95,5000,True
+decision_tree,clinical_imaging,balanced_accuracy,real_only,real_plus_synthetic,real_plus_synthetic_minus_real_only,0.1875,0.044642857142857206,0.3482142857142857,0.95,5000,False
+logistic_regression,clinical,balanced_accuracy,real_only,real_plus_synthetic,real_plus_synthetic_minus_real_only,0.03125,0.0,0.09375,0.95,5000,True
+logistic_regression,clinical_imaging,balanced_accuracy,real_only,real_plus_synthetic,real_plus_synthetic_minus_real_only,0.004464285714285698,-0.09375,0.1071428571428572,0.95,5000,True
+random_forest,clinical,balanced_accuracy,real_only,real_plus_synthetic,real_plus_synthetic_minus_real_only,0.0580357142857143,-0.049107142857142794,0.18314732142856982,0.95,5000,True
+random_forest,clinical_imaging,balanced_accuracy,real_only,real_plus_synthetic,real_plus_synthetic_minus_real_only,0.0,0.0,0.0,0.95,5000,True
+svm,clinical,balanced_accuracy,real_only,real_plus_synthetic,real_plus_synthetic_minus_real_only,0.004464285714285698,-0.09375,0.1071428571428571,0.95,5000,True
+svm,clinical_imaging,balanced_accuracy,real_only,real_plus_synthetic,real_plus_synthetic_minus_real_only,0.0669642857142857,0.0,0.1696428571428572,0.95,5000,True
+xgboost,clinical,balanced_accuracy,real_only,real_plus_synthetic,real_plus_synthetic_minus_real_only,0.004464285714285698,-0.09375,0.1071428571428572,0.95,5000,True
+xgboost,clinical_imaging,balanced_accuracy,real_only,real_plus_synthetic,real_plus_synthetic_minus_real_only,0.0625,0.0,0.15625,0.95,5000,True

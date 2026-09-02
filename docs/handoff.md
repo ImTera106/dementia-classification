@@ -1,7 +1,7 @@
 # Project Handoff
 
 ## Current phase status
-Phase 18 — Add privacy-safe public aggregate verification packages: complete.
+Phase 19 — Canonical migration, legacy parity, and public release: complete.
 
 ## Completed
 - Added SHA-256 fingerprints for the persistent train and test CSV files when
@@ -55,6 +55,20 @@ Phase 18 — Add privacy-safe public aggregate verification packages: complete.
   analysis, prediction, test-data, configuration, Git, runtime, split-count, and
   artifact fingerprints. Independent package verification rejects changed,
   missing, or unrecorded files.
+- Re-ran deterministic cleaning solely to add split fingerprints; train and test
+  CSV hashes remained unchanged, with 120/30 subjects, zero overlap, and held-out
+  class counts 14/16.
+- Froze all 20 existing experiments at source commit `df43b38` and created
+  canonical migration release `ec26697ccaf9b788` from the previously inspected
+  test partition.
+- Confirmed legacy computational parity for all 600 prediction rows, 20
+  experiments, 30 subjects, scores, labels, and model-level metrics. This is
+  migration equivalence, not a new independent evaluation.
+- Regenerated and fingerprinted 18 formal analysis artifacts from canonical
+  predictions, reran explicitly post-hoc explanations, and rendered an HTML
+  report containing the exact release and analysis identifiers.
+- Published and independently verified 37 privacy-safe aggregate/report
+  artifacts in `public_results/ec26697ccaf9b788/`.
 - Added a standalone, beginner-friendly end-to-end ML guideline covering problem
   definition, data boundaries, preprocessing, model assumptions, tuning,
   evaluation, inference, deployment, monitoring, and retraining.
@@ -144,6 +158,8 @@ Phase 18 — Add privacy-safe public aggregate verification packages: complete.
   themselves.
 - The report must embed the exact release ID and analysis-manifest digest before
   the publisher accepts it.
+- The migration deliberately reused the historically inspected test partition.
+  Its purpose is provenance and parity, not renewed statistical independence.
 - The guide treats this repository as a reproducible offline ML experiment with
   controlled batch inference, not as a deployed or clinically validated system.
 - A missing analysis is labeled as a limitation or deferred check rather than a
@@ -160,6 +176,13 @@ Phase 18 — Add privacy-safe public aggregate verification packages: complete.
   its presence is no longer treated as a repository-contract failure.
 
 ## Tests
+- Canonical release `ec26697ccaf9b788`: parity confirmed for 20 experiments and
+  30 subjects; the analysis manifest records 18 artifacts; the public manifest
+  records 37 artifacts.
+- `quarto render report/report.qmd`: all 17 Python cells executed and the linked
+  HTML rendered successfully.
+- `python -m pytest -q -p no:cacheprovider`: 85 passed, 2 subtests passed, with
+  four non-failing third-party warnings after migration artifacts were present.
 - `python -m pytest -q -p no:cacheprovider`: 85 passed, 2 subtests passed, with
   four non-failing third-party warnings. The retained local `report/report.html`
   is Git-ignored and no longer causes a contract failure.
@@ -198,8 +221,6 @@ Phase 18 — Add privacy-safe public aggregate verification packages: complete.
   still reports pre-existing trailing whitespace in the user-modified `AGENTS.md`.
 
 ## Unresolved issues
-- No real canonical release or public verification package has been generated;
-  the publisher was verified only with fabricated test artifacts.
 - The held-out partition contains only 30 subjects and has already been inspected
   across both training conditions.
 - No independent external cohort validates transportability.
@@ -217,5 +238,5 @@ Phase 18 — Add privacy-safe public aggregate verification packages: complete.
 - Unrelated existing edits in `AGENTS.md` and `README.md` were preserved.
 
 ## Next task
-Create one explicitly labelled canonical migration release, verify legacy
-computational parity, render the linked report, and publish its aggregate package.
+Perform a final résumé-facing documentation review against the committed public
+verification package and remove stale phase language without changing results.

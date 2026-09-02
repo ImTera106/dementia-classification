@@ -1,0 +1,118 @@
+{
+  "training_condition": "real_plus_synthetic",
+  "reports": {
+    "clinical": {
+      "feature_set": "clinical",
+      "training_condition": "real_plus_synthetic",
+      "real_rows": 120,
+      "synthetic_rows": 120,
+      "target_counts": {
+        "0": 58,
+        "1": 62
+      },
+      "exact_real_matches": 0,
+      "versions": {
+        "sdv": "1.37.3"
+      },
+      "metadata": {
+        "tables": {
+          "subjects": {
+            "columns": {
+              "age": {
+                "sdtype": "numerical"
+              },
+              "education_years": {
+                "sdtype": "numerical"
+              },
+              "ses": {
+                "sdtype": "numerical"
+              },
+              "mmse": {
+                "sdtype": "numerical"
+              },
+              "sex": {
+                "sdtype": "categorical"
+              },
+              "dementia": {
+                "sdtype": "categorical"
+              }
+            }
+          }
+        },
+        "relationships": [],
+        "METADATA_SPEC_VERSION": "V1"
+      },
+      "diagnostic_score": 1.0,
+      "diagnostic_properties": {
+        "Data Validity": 1.0,
+        "Data Structure": 1.0
+      },
+      "quality_score": 0.8125104884740547,
+      "quality_properties": {
+        "Column Shapes": 0.88757261016501,
+        "Column Pair Trends": 0.7374483667830994
+      }
+    },
+    "clinical_imaging": {
+      "feature_set": "clinical_imaging",
+      "training_condition": "real_plus_synthetic",
+      "real_rows": 120,
+      "synthetic_rows": 120,
+      "target_counts": {
+        "0": 58,
+        "1": 62
+      },
+      "exact_real_matches": 0,
+      "versions": {
+        "sdv": "1.37.3"
+      },
+      "metadata": {
+        "tables": {
+          "subjects": {
+            "columns": {
+              "age": {
+                "sdtype": "numerical"
+              },
+              "education_years": {
+                "sdtype": "numerical"
+              },
+              "ses": {
+                "sdtype": "numerical"
+              },
+              "mmse": {
+                "sdtype": "numerical"
+              },
+              "etiv": {
+                "sdtype": "numerical"
+              },
+              "nwbv": {
+                "sdtype": "numerical"
+              },
+              "asf": {
+                "sdtype": "numerical"
+              },
+              "sex": {
+                "sdtype": "categorical"
+              },
+              "dementia": {
+                "sdtype": "categorical"
+              }
+            }
+          }
+        },
+        "relationships": [],
+        "METADATA_SPEC_VERSION": "V1"
+      },
+      "diagnostic_score": 1.0,
+      "diagnostic_properties": {
+        "Data Validity": 1.0,
+        "Data Structure": 1.0
+      },
+      "quality_score": 0.7762025818529523,
+      "quality_properties": {
+        "Column Shapes": 0.810249153742126,
+        "Column Pair Trends": 0.7421560099637786
+      }
+    }
+  }
+}

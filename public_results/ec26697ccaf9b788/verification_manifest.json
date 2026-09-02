@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "release_id": "ec26697ccaf9b788",
+  "historical_test_status": "previously_inspected_partition",
+  "claim_scope": "aggregate computational verification; not renewed independence",
+  "git": {
+    "commit": "df43b38ba417bc08ee83028e4083c4d42a022055",
+    "dirty": false,
+    "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "frozen_manifest_sha256": "ec26697ccaf9b78865db408f54f1a487655da6527ba0f1f45e01fba6bd477fec",
+  "test_data_sha256": "29b4f2b3b46c82160d8c100a5414a21a2892ada63166b3f6213c96980d0571d0",
+  "predictions_sha256": "1c9f22d663e219be21ca7fa57e420ec01ad1714e442083d08008a48ba9e4fe6a",
+  "analysis_manifest_sha256": "2e979ea59364c04ccd88e94040098bfcca2e6a48d554dee2fcb9607a3416ea4c",
+  "runtime_versions": {
+    "python": "3.13.13",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.9.0",
+    "xgboost": "3.4.0"
+  },
+  "configuration_sha256": {
+    "augmented_evaluation": {
+      "path": "config/evaluation_synthetic_config.yaml",
+      "sha256": "23b80d44bf2210a57884e9d836db05839caf527dbcd9e04c5835651f9ccb3418"
+    },
+    "augmented_tuning": {
+      "path": "config/tuning_synthetic_config.yaml",
+      "sha256": "0c871a0cf75d0c703cfd4cc8cbe693f3ee6bcdf819912ffb4f91c2abbe2b5109"
+    },
+    "model": {
+      "path": "config/model_config.yaml",
+      "sha256": "2b74339c1c398693ae8d9e98c5138908fa5ff2554a76ccde4bf42d65d7ab773c"
+    },
+    "paths": {
+      "path": "config/paths.yaml",
+      "sha256": "5af5c3716ccf2e9cd1fc398053bb6bcf2e08099eb55f25c0ad20c07c380c761f"
+    },
+    "real_evaluation": {
+      "path": "config/evaluation_config.yaml",
+      "sha256": "4c6d7c457234814bb3578827a43666e8c2d8e2b1a0eea1223296d7df53f9d394"
+    },
+    "real_tuning": {
+      "path": "config/tuning_config.yaml",
+      "sha256": "39ba09ed384ed39438e6773ba8618a54322989b0c9d0f8d887da2183b3dc3540"
+    },
+    "synthesis": {
+      "path": "config/synthetic_config.yaml",
+      "sha256": "0c40232f96563d1c23fec1a2d430422de1817affa9c1e103a6b696c033cc7603"
+    },
+    "validation": {
+      "path": "config/validation_config.yaml",
+      "sha256": "ab10853fe93a4775685f33338f80827860624a408ef09a9046b207ba6f6e4675"
+    }
+  },
+  "split_summary": {
+    "random_state": 123,
+    "subject_overlap_count": 0,
+    "test_subjects": 30,
+    "test_target_counts": {
+      "1": 16,
+      "0": 14
+    },
+    "train_subjects": 120,
+    "train_target_counts": {
+      "1": 62,
+      "0": 58
+    }
+  },
+  "artifacts": {
+    "augmented_tuning_summary": {
+      "path": "outputs/tuning/real_plus_synthetic/tuning_summary.csv",
+      "source_sha256": "80500470baadd23aa6297e5f2020afd22115338ade6841a05f719766aa089271",
+      "published_sha256": "80500470baadd23aa6297e5f2020afd22115338ade6841a05f719766aa089271"
+    },
+    "baseline_cv_summary": {
+      "path": "outputs/metrics/baseline_cv_summary.csv",
+      "source_sha256": "e2d7874fe166c33648e9bc292cb9b281f75126b14494ca0b5d07c72d1c4437a6",
+      "published_sha256": "e2d7874fe166c33648e9bc292cb9b281f75126b14494ca0b5d07c72d1c4437a6"
+    },
+    "data_assessment": {
+      "path": "outputs/data/data_assessment.json",
+      "source_sha256": "d9c0619bc93768e772a1844dfe0ee234dbd1c22e24eae972d164dbc82c1b20ae",
+      "published_sha256": "d9c0619bc93768e772a1844dfe0ee234dbd1c22e24eae972d164dbc82c1b20ae"
+    },
+    "formal_real_only_balanced_accuracy_figure": {
+      "path": "outputs/figures/test_balanced_accuracy.png",
+      "source_sha256": "f14b8acf3dfc51b24f093a984e9db860a5a387336d9e694ff7e446a4bfb2a523",
+      "published_sha256": "f14b8acf3dfc51b24f093a984e9db860a5a387336d9e694ff7e446a4bfb2a523"
+    },
+    "formal_real_only_bootstrap_difference_figure": {
+      "path": "outputs/figures/feature_set_balanced_accuracy_differences.png",
+      "source_sha256": "07d4ba208f668c302b300bd7c48c75998b9ff5dac9b6d1469137106848105530",
+      "published_sha256": "07d4ba208f668c302b300bd7c48c75998b9ff5dac9b6d1469137106848105530"
+    },
+    "formal_real_only_bootstrap_differences": {
+      "path": "outputs/tables/feature_set_balanced_accuracy_differences.csv",
+      "source_sha256": "0b10839d951c46916da6bd43e091f8d8ba15c00f8f35a4d4a2a92a28bf9a57c8",
+      "published_sha256": "0b10839d951c46916da6bd43e091f8d8ba15c00f8f35a4d4a2a92a28bf9a57c8"
+    },
+    "formal_real_only_bootstrap_interval_figure": {
+      "path": "outputs/figures/test_balanced_accuracy_intervals.png",
+      "source_sha256": "50e890271589161d0b1272ae79e2137d90b549ac9436e95b4afe22d886b473f2",
+      "published_sha256": "50e890271589161d0b1272ae79e2137d90b549ac9436e95b4afe22d886b473f2"
+    },
+    "formal_real_only_bootstrap_intervals": {
+      "path": "outputs/metrics/test_metric_bootstrap_intervals.csv",
+      "source_sha256": "29a7cd7d1b65e571507322258433ff9639cd682199fae3f1d68990051054493d",
+      "published_sha256": "29a7cd7d1b65e571507322258433ff9639cd682199fae3f1d68990051054493d"
+    },
+    "formal_real_only_confusion_matrices": {
+      "path": "outputs/tables/test_confusion_matrices.csv",
+      "source_sha256": "2948d73dff32e34e038995fc29da48f1b183b3a4c333ff02d4929de79bfb02e4",
+      "published_sha256": "2948d73dff32e34e038995fc29da48f1b183b3a4c333ff02d4929de79bfb02e4"
+    },
+    "formal_real_only_metrics": {
+      "path": "outputs/metrics/test_metrics.csv",
+      "source_sha256": "9eef6aa90a2487f656f0c2c69213c6fec1e76c67255b51ca83bbf3f11254796f",
+      "published_sha256": "9eef6aa90a2487f656f0c2c69213c6fec1e76c67255b51ca83bbf3f11254796f"
+    },
+    "formal_real_only_roc_figure": {
+      "path": "outputs/figures/test_roc_curves.png",
+      "source_sha256": "885979c201159858d90643956dc479a13fb14c367bbbd172d1cea35a47acca6c",
+      "published_sha256": "885979c201159858d90643956dc479a13fb14c367bbbd172d1cea35a47acca6c"
+    },
+    "formal_real_plus_synthetic_balanced_accuracy_figure": {
+      "path": "outputs/figures/test_balanced_accuracy_real_plus_synthetic.png",
+      "source_sha256": "0db154f58492993940bf4a63bdcf7ca1a8d6e8e458b399df23fc362028b0d562",
+      "published_sha256": "0db154f58492993940bf4a63bdcf7ca1a8d6e8e458b399df23fc362028b0d562"
+    },
+    "formal_real_plus_synthetic_confusion_matrices": {
+      "path": "outputs/tables/test_confusion_matrices_real_plus_synthetic.csv",
+      "source_sha256": "39d9be348c299b70fdecd743b7270d3d2d401ee9f4d33943af9816543e254add",
+      "published_sha256": "39d9be348c299b70fdecd743b7270d3d2d401ee9f4d33943af9816543e254add"
+    },
+    "formal_real_plus_synthetic_metrics": {
+      "path": "outputs/metrics/test_metrics_real_plus_synthetic.csv",
+      "source_sha256": "f732371e2f8ae864813738ffe2bfc7c6d2a69de1369ac580b98b9022557cc0e9",
+      "published_sha256": "f732371e2f8ae864813738ffe2bfc7c6d2a69de1369ac580b98b9022557cc0e9"
+    },
+    "formal_real_plus_synthetic_roc_figure": {
+      "path": "outputs/figures/test_roc_curves_real_plus_synthetic.png",
+      "source_sha256": "4fb1c08875a85375386357223710ba9c1c2eb23e3b274f34ca914646402eeb89",
+      "published_sha256": "4fb1c08875a85375386357223710ba9c1c2eb23e3b274f34ca914646402eeb89"
+    },
+    "formal_training_condition_bootstrap_difference_figure": {
+      "path": "outputs/figures/training_condition_balanced_accuracy_differences.png",
+      "source_sha256": "385b6299750ee50239e6eed611786ff76a83f6c9879a78553688b8aab2a59609",
+      "published_sha256": "385b6299750ee50239e6eed611786ff76a83f6c9879a78553688b8aab2a59609"
+    },
+    "formal_training_condition_bootstrap_differences": {
+      "path": "outputs/tables/training_condition_balanced_accuracy_differences.csv",
+      "source_sha256": "0b03264743a7afd747679937a9733af4aa56022d2b2e39fc277d8a0fbf83061c",
+      "published_sha256": "0b03264743a7afd747679937a9733af4aa56022d2b2e39fc277d8a0fbf83061c"
+    },
+    "formal_training_condition_bootstrap_interval_figure": {
+      "path": "outputs/figures/test_balanced_accuracy_intervals_real_plus_synthetic.png",
+      "source_sha256": "a260ee9824741ebff137c7b64c076424b57a88af13575dfb3c6d5a945e16393b",
+      "published_sha256": "a260ee9824741ebff137c7b64c076424b57a88af13575dfb3c6d5a945e16393b"
+    },
+    "formal_training_condition_bootstrap_intervals": {
+      "path": "outputs/metrics/test_metric_bootstrap_intervals_real_plus_synthetic.csv",
+      "source_sha256": "a56303b4a199630a3974a2dcdefedb8c48b07a687b6836cfdddea030128ae03f",
+      "published_sha256": "a56303b4a199630a3974a2dcdefedb8c48b07a687b6836cfdddea030128ae03f"
+    },
+    "formal_training_condition_comparison": {
+      "path": "outputs/metrics/training_condition_comparison.csv",
+      "source_sha256": "f10b01ed3c86f55d6173cec60278358a123d5c8d952c596072682ed8127cb7f2",
+      "published_sha256": "f10b01ed3c86f55d6173cec60278358a123d5c8d952c596072682ed8127cb7f2"
+    },
+    "formal_training_condition_comparison_figure": {
+      "path": "outputs/figures/training_condition_comparison.png",
+      "source_sha256": "8943c9bb8abbe586199f0df51d450c688870eeb7f1841c2bc16abb66eaa4195e",
+      "published_sha256": "8943c9bb8abbe586199f0df51d450c688870eeb7f1841c2bc16abb66eaa4195e"
+    },
+    "logistic_coefficients": {
+      "path": "outputs/tables/logistic_coefficients.csv",
+      "source_sha256": "7d0110d6fc72e86127685381c21e23c8801153b3099880c1fd3478264a5fdac8",
+      "published_sha256": "7d0110d6fc72e86127685381c21e23c8801153b3099880c1fd3478264a5fdac8"
+    },
+    "logistic_coefficients_figure": {
+      "path": "outputs/figures/explain/logistic_coefficients.png",
+      "source_sha256": "25c78e16257d630fde54cdd43d467b86af5440e2429c8473c90a5093a0ca8517",
+      "published_sha256": "25c78e16257d630fde54cdd43d467b86af5440e2429c8473c90a5093a0ca8517"
+    },
+    "permutation_importance": {
+      "path": "outputs/tables/permutation_importance.csv",
+      "source_sha256": "e4a648583c6df9e166873bfee9f3197429c11019301f5f5e762d89f9b3e78fef",
+      "published_sha256": "e4a648583c6df9e166873bfee9f3197429c11019301f5f5e762d89f9b3e78fef"
+    },
+    "permutation_importance_clinical_figure": {
+      "path": "outputs/figures/explain/permutation_importance_clinical.png",
+      "source_sha256": "2fe0037622becb50fba265d5307af16b379fd33ad3750fbd8bbc4b1c25e01376",
+      "published_sha256": "2fe0037622becb50fba265d5307af16b379fd33ad3750fbd8bbc4b1c25e01376"
+    },
+    "permutation_importance_clinical_imaging_figure": {
+      "path": "outputs/figures/explain/permutation_importance_clinical_imaging.png",
+      "source_sha256": "da179f45bf32262cc945b755f585b32d0f2335c9069e086d3c92634494ed9498",
+      "published_sha256": "da179f45bf32262cc945b755f585b32d0f2335c9069e086d3c92634494ed9498"
+    },
+    "real_tuning_summary": {
+      "path": "outputs/tuning/tuning_summary.csv",
+      "source_sha256": "6656b829555c056da24a40bfeff9bbe65b0ef9d789ca8ae9bd5013b28d38ad52",
+      "published_sha256": "6656b829555c056da24a40bfeff9bbe65b0ef9d789ca8ae9bd5013b28d38ad52"
+    },
+    "rendered_report": {
+      "path": "report/report.html",
+      "source_sha256": "0dd936871f0a8296b102d847d128d782a9723b052fb7886ca2bced6093a148e7",
+      "published_sha256": "0dd936871f0a8296b102d847d128d782a9723b052fb7886ca2bced6093a148e7"
+    },
+    "split_summary": {
+      "path": "outputs/data/split_summary.json",
+      "source_sha256": "831796ecf7cb5664bce9498f1071a0ea897594e089443fc826f913d0448eb4e4",
+      "published_sha256": "831796ecf7cb5664bce9498f1071a0ea897594e089443fc826f913d0448eb4e4"
+    },
+    "synthetic_quality": {
+      "path": "outputs/metrics/synthetic_quality.json",
+      "source_sha256": "114bbc5727edcab0276ede8ad8f9b17ccf02a7d143cb9174008bc8c7b4fb4ded",
+      "published_sha256": "114bbc5727edcab0276ede8ad8f9b17ccf02a7d143cb9174008bc8c7b4fb4ded"
+    },
+    "tree_shap_decision_tree_clinical_figure": {
+      "path": "outputs/figures/explain/tree_shap/decision_tree_clinical.png",
+      "source_sha256": "4886800d7e51571db5c5f3dd641dc9e3b265325ca101e2839e461e25b98c141b",
+      "published_sha256": "4886800d7e51571db5c5f3dd641dc9e3b265325ca101e2839e461e25b98c141b"
+    },
+    "tree_shap_decision_tree_clinical_imaging_figure": {
+      "path": "outputs/figures/explain/tree_shap/decision_tree_clinical_imaging.png",
+      "source_sha256": "5801b8b3b8ef16bc7ca96ee3d6cec772e9528f409732b688cd845390e626ce18",
+      "published_sha256": "5801b8b3b8ef16bc7ca96ee3d6cec772e9528f409732b688cd845390e626ce18"
+    },
+    "tree_shap_importance": {
+      "path": "outputs/tables/tree_shap_importance.csv",
+      "source_sha256": "8ceabe3c6b969c6acce742c3ac501b6e68ca1f9c73e5a8f4e5ecd5fa184631ae",
+      "published_sha256": "8ceabe3c6b969c6acce742c3ac501b6e68ca1f9c73e5a8f4e5ecd5fa184631ae"
+    },
+    "tree_shap_random_forest_clinical_figure": {
+      "path": "outputs/figures/explain/tree_shap/random_forest_clinical.png",
+      "source_sha256": "3519e39c67cc46e49d90d710eacedcc85d5a9747da1f7a5f4a2f0921d89d740c",
+      "published_sha256": "3519e39c67cc46e49d90d710eacedcc85d5a9747da1f7a5f4a2f0921d89d740c"
+    },
+    "tree_shap_random_forest_clinical_imaging_figure": {
+      "path": "outputs/figures/explain/tree_shap/random_forest_clinical_imaging.png",
+      "source_sha256": "b1b97b6a48ecf3f0830a2e4a8b6bb14314c426e9a34113e974a314d600555705",
+      "published_sha256": "b1b97b6a48ecf3f0830a2e4a8b6bb14314c426e9a34113e974a314d600555705"
+    },
+    "tree_shap_xgboost_clinical_figure": {
+      "path": "outputs/figures/explain/tree_shap/xgboost_clinical.png",
+      "source_sha256": "69db04bb04fff1dea9ba029795e6cde336631bceb99a370cc2b0e9fc7901a7e0",
+      "published_sha256": "69db04bb04fff1dea9ba029795e6cde336631bceb99a370cc2b0e9fc7901a7e0"
+    },
+    "tree_shap_xgboost_clinical_imaging_figure": {
+      "path": "outputs/figures/explain/tree_shap/xgboost_clinical_imaging.png",
+      "source_sha256": "71400420584b04253701f7a3a1e23c38876de8793038ac5a15e5c741ac8d2869",
+      "published_sha256": "71400420584b04253701f7a3a1e23c38876de8793038ac5a15e5c741ac8d2869"
+    }
+  },
+  "excluded_artifacts": [
+    "raw_or_processed_oasis_data",
+    "subject_ids",
+    "subject_level_predictions",
+    "train_test_membership",
+    "synthetic_subject_rows",
+    "fitted_models"
+  ],
+  "manifest_sha256": "bcbb10f0d5ed61d9fd6c087f74c03bc4829d2e9ca73fdbd24254432c7b1ae849"
+}

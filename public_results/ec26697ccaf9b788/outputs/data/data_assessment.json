@@ -1,0 +1,112 @@
+{
+  "raw": {
+    "stage": "raw",
+    "rows": 373,
+    "columns": 15,
+    "column_names": [
+      "Subject ID",
+      "MRI ID",
+      "Group",
+      "Visit",
+      "MR Delay",
+      "M/F",
+      "Hand",
+      "Age",
+      "EDUC",
+      "SES",
+      "MMSE",
+      "CDR",
+      "eTIV",
+      "nWBV",
+      "ASF"
+    ],
+    "dtypes": {
+      "Subject ID": "object",
+      "MRI ID": "object",
+      "Group": "object",
+      "Visit": "int64",
+      "MR Delay": "int64",
+      "M/F": "object",
+      "Hand": "object",
+      "Age": "int64",
+      "EDUC": "int64",
+      "SES": "float64",
+      "MMSE": "float64",
+      "CDR": "float64",
+      "eTIV": "int64",
+      "nWBV": "float64",
+      "ASF": "float64"
+    },
+    "missing_by_column": {
+      "Subject ID": 0,
+      "MRI ID": 0,
+      "Group": 0,
+      "Visit": 0,
+      "MR Delay": 0,
+      "M/F": 0,
+      "Hand": 0,
+      "Age": 0,
+      "EDUC": 0,
+      "SES": 19,
+      "MMSE": 2,
+      "CDR": 0,
+      "eTIV": 0,
+      "nWBV": 0,
+      "ASF": 0
+    },
+    "duplicate_rows": 0,
+    "unique_subjects": 150,
+    "target_counts": {
+      "Nondemented": 190,
+      "Demented": 146,
+      "Converted": 37
+    }
+  },
+  "subject_level": {
+    "stage": "subject_level",
+    "rows": 150,
+    "columns": 10,
+    "column_names": [
+      "subject_id",
+      "sex",
+      "age",
+      "education_years",
+      "ses",
+      "mmse",
+      "etiv",
+      "nwbv",
+      "asf",
+      "dementia"
+    ],
+    "dtypes": {
+      "subject_id": "object",
+      "sex": "string",
+      "age": "int64",
+      "education_years": "int64",
+      "ses": "float64",
+      "mmse": "float64",
+      "etiv": "int64",
+      "nwbv": "float64",
+      "asf": "float64",
+      "dementia": "int8"
+    },
+    "missing_by_column": {
+      "subject_id": 0,
+      "sex": 0,
+      "age": 0,
+      "education_years": 0,
+      "ses": 8,
+      "mmse": 1,
+      "etiv": 0,
+      "nwbv": 0,
+      "asf": 0,
+      "dementia": 0
+    },
+    "duplicate_rows": 0,
+    "unique_subjects": 150,
+    "target_counts": {
+      "1": 78,
+      "0": 72
+    }
+  }
+}

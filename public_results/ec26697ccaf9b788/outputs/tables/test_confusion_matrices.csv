@@ -1,0 +1,11 @@
+algorithm,feature_set,training_condition,tn,fp,fn,tp
+decision_tree,clinical,real_only,12,2,2,14
+decision_tree,clinical_imaging,real_only,13,1,7,9
+logistic_regression,clinical,real_only,13,1,5,11
+logistic_regression,clinical_imaging,real_only,13,1,5,11
+random_forest,clinical,real_only,14,0,5,11
+random_forest,clinical_imaging,real_only,13,1,6,10
+svm,clinical,real_only,12,2,4,12
+svm,clinical_imaging,real_only,13,1,6,10
+xgboost,clinical,real_only,12,2,2,14
+xgboost,clinical_imaging,real_only,13,1,4,12

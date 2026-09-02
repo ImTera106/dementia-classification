@@ -1,0 +1,44 @@
+{
+  "test_size": 0.2,
+  "random_state": 123,
+  "stratified": true,
+  "train_subjects": 120,
+  "test_subjects": 30,
+  "subject_overlap_count": 0,
+  "train_target_counts": {
+    "1": 62,
+    "0": 58
+  },
+  "test_target_counts": {
+    "1": 16,
+    "0": 14
+  },
+  "train_missing_by_column": {
+    "subject_id": 0,
+    "sex": 0,
+    "age": 0,
+    "education_years": 0,
+    "ses": 7,
+    "mmse": 1,
+    "etiv": 0,
+    "nwbv": 0,
+    "asf": 0,
+    "dementia": 0
+  },
+  "test_missing_by_column": {
+    "subject_id": 0,
+    "sex": 0,
+    "age": 0,
+    "education_years": 0,
+    "ses": 1,
+    "mmse": 0,
+    "etiv": 0,
+    "nwbv": 0,
+    "asf": 0,
+    "dementia": 0
+  },
+  "file_sha256": {
+    "train": "e9f78c9aa467ab191b836fb8fb4b4ff0ece52948fc7c75c243ddd5e2546eda64",
+    "test": "29b4f2b3b46c82160d8c100a5414a21a2892ada63166b3f6213c96980d0571d0"
+  }
+}

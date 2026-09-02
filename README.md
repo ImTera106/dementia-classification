@@ -154,6 +154,11 @@ selected figures, the rendered report, and a verification manifest. It never
 includes OASIS rows, subject IDs, predictions, split membership, synthetic
 subjects, or fitted models. No package is created from legacy outputs alone.
 
+The current migration package is available at
+[`public_results/ec26697ccaf9b788/`](public_results/ec26697ccaf9b788/). Its
+manifest identifies the previously inspected test status and fingerprints all
+37 included aggregate/report artifacts. Subject-level predictions remain local.
+
 Run the test suite with:
 
 ```bash
