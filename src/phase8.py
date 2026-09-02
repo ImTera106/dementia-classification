@@ -1,4 +1,4 @@
-"""Orchestrate the leakage-safe real-plus-synthetic Phase 8 experiment."""
+"""Develop real-plus-synthetic models without access to held-out test data."""
 
 from __future__ import annotations
 
@@ -9,19 +9,16 @@ from typing import Any, Final
 
 import pandas as pd
 
-from src.evaluate import evaluate_saved_models, save_evaluation_outputs
 from src.synthesize import modeling_columns
 from src.train import train_augmented_models
 from src.tune import save_tuning_outputs, tune_augmented_candidates
 from src.utils.io import load_yaml_config, save_json
-from src.utils.plotting import plot_training_condition_comparison
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_PATHS_CONFIG: Final[Path] = Path("config/paths.yaml")
 DEFAULT_MODEL_CONFIG: Final[Path] = Path("config/model_config.yaml")
 DEFAULT_TUNING_CONFIG: Final[Path] = Path("config/tuning_synthetic_config.yaml")
 DEFAULT_SYNTHETIC_CONFIG: Final[Path] = Path("config/synthetic_config.yaml")
-DEFAULT_EVALUATION_CONFIG: Final[Path] = Path("config/evaluation_synthetic_config.yaml")
 
 
 def _save_training_data(
@@ -52,29 +49,13 @@ def _save_training_data(
         combined.to_csv(combined_path, index=False)
 
 
-def _comparison_table(real: pd.DataFrame, augmented: pd.DataFrame) -> pd.DataFrame:
-    """Combine held-out metrics and add descriptive augmentation differences."""
-    keys = ["algorithm", "feature_set"]
-    reference = real[keys + ["balanced_accuracy"]].rename(
-        columns={"balanced_accuracy": "real_only_balanced_accuracy"}
-    )
-    comparison = pd.concat([real, augmented], ignore_index=True).merge(
-        reference, on=keys, how="left", validate="many_to_one"
-    )
-    comparison["balanced_accuracy_delta_vs_real_only"] = (
-        comparison["balanced_accuracy"] - comparison["real_only_balanced_accuracy"]
-    )
-    return comparison
-
-
 def run_phase8(
     paths_config: dict[str, Any],
     model_config: dict[str, Any],
     tuning_config: dict[str, Any],
     synthesis_config: dict[str, Any],
-    evaluation_config: dict[str, Any],
 ) -> dict[str, Path]:
-    """Run fold-local tuning, final augmentation, training, and real-test scoring."""
+    """Tune, synthesize, and fit augmented models using development data only."""
     data_paths = paths_config["data"]
     output_paths = paths_config["outputs"]
     real_train = pd.read_csv(data_paths["train"])
@@ -108,44 +89,9 @@ def run_phase8(
         output_paths["synthetic_quality"],
     )
     save_json(manifest, paths_config["synthetic_model_manifest"])
-
-    real_test = pd.read_csv(data_paths["test"])
-    subject_column = str(model_config["split"]["subject_id_column"])
-    if set(real_train[subject_column]).intersection(real_test[subject_column]):
-        raise ValueError("Real train and held-out test subject identifiers overlap")
-    metrics, predictions, confusion = evaluate_saved_models(
-        real_test, manifest, model_config, evaluation_config
-    )
-    evaluation_paths = save_evaluation_outputs(
-        metrics,
-        predictions,
-        confusion,
-        metrics_path=output_paths["synthetic_test_metrics"],
-        predictions_path=output_paths["synthetic_test_predictions"],
-        confusion_path=output_paths["synthetic_test_confusion_matrices"],
-        balanced_accuracy_figure_path=output_paths[
-            "synthetic_test_balanced_accuracy_figure"
-        ],
-        roc_figure_path=output_paths["synthetic_test_roc_figure"],
-        dpi=int(evaluation_config["figures"]["dpi"]),
-    )
-    comparison = _comparison_table(
-        pd.read_csv(output_paths["test_metrics"]), metrics
-    )
-    comparison_path = Path(output_paths["training_condition_comparison"])
-    comparison_path.parent.mkdir(parents=True, exist_ok=True)
-    comparison.to_csv(comparison_path, index=False)
-    figure_path = plot_training_condition_comparison(
-        comparison,
-        output_paths["training_condition_comparison_figure"],
-        dpi=int(evaluation_config["figures"]["dpi"]),
-    )
     return {
         **saved,
-        **evaluation_paths,
         "manifest": Path(paths_config["synthetic_model_manifest"]),
-        "comparison": comparison_path,
-        "comparison_figure": figure_path,
     }
 
 
@@ -156,7 +102,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-config", type=Path, default=DEFAULT_MODEL_CONFIG)
     parser.add_argument("--tuning-config", type=Path, default=DEFAULT_TUNING_CONFIG)
     parser.add_argument("--synthetic-config", type=Path, default=DEFAULT_SYNTHETIC_CONFIG)
-    parser.add_argument("--evaluation-config", type=Path, default=DEFAULT_EVALUATION_CONFIG)
     return parser.parse_args()
 
 
@@ -170,7 +115,6 @@ def main() -> int:
             load_yaml_config(args.model_config),
             load_yaml_config(args.tuning_config),
             load_yaml_config(args.synthetic_config),
-            load_yaml_config(args.evaluation_config),
         )
     except (FileNotFoundError, KeyError, OSError, TypeError, ValueError) as exc:
         LOGGER.error("Phase 8 failed: %s", exc)

@@ -20,6 +20,7 @@ execute:
 
 ```{python}
 from pathlib import Path
+import hashlib
 import json
 
 import pandas as pd
@@ -29,6 +30,7 @@ from IPython.display import Markdown, display
 ROOT = Path("..").resolve()
 
 REQUIRED_ARTIFACTS = [
+    "models/frozen_experiment_manifest.json",
     "outputs/data/data_assessment.json",
     "outputs/data/split_summary.json",
     "outputs/metrics/baseline_cv_summary.csv",
@@ -51,6 +53,76 @@ if missing:
     raise FileNotFoundError(
         "Render requires saved project artifacts; missing: " + ", ".join(missing)
     )
+
+frozen_manifest = json.loads(
+    (ROOT / "models/frozen_experiment_manifest.json").read_text(encoding="utf-8")
+)
+release_id = frozen_manifest["manifest_sha256"][:16]
+release_dir = ROOT / "outputs/final_evaluation" / release_id
+receipt_path = release_dir / "evaluation_receipt.json"
+prediction_path = release_dir / "frozen_predictions.csv"
+if not receipt_path.is_file() or not prediction_path.is_file():
+    raise FileNotFoundError(f"Canonical evaluation release is incomplete: {release_dir}")
+evaluation_receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+prediction_digest = hashlib.sha256(prediction_path.read_bytes()).hexdigest()
+if (
+    evaluation_receipt.get("frozen_manifest_sha256")
+    != frozen_manifest["manifest_sha256"]
+    or evaluation_receipt.get("predictions_sha256") != prediction_digest
+):
+    raise ValueError("Canonical evaluation release fingerprint mismatch")
+analysis_manifest_path = release_dir / "analysis_manifest.json"
+if not analysis_manifest_path.is_file():
+    raise FileNotFoundError(f"Release analysis manifest is missing: {analysis_manifest_path}")
+analysis_manifest = json.loads(analysis_manifest_path.read_text(encoding="utf-8"))
+analysis_payload = {
+    key: value for key, value in analysis_manifest.items()
+    if key != "manifest_sha256"
+}
+analysis_digest = hashlib.sha256(
+    json.dumps(
+        analysis_payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+).hexdigest()
+if (
+    analysis_manifest.get("manifest_sha256") != analysis_digest
+    or analysis_manifest.get("frozen_manifest_sha256")
+    != frozen_manifest["manifest_sha256"]
+    or analysis_manifest.get("predictions_sha256")
+    != evaluation_receipt["predictions_sha256"]
+):
+    raise ValueError("Release analysis manifest fingerprint mismatch")
+for artifact in analysis_manifest.get("artifacts", {}).values():
+    artifact_path = ROOT / artifact["path"]
+    if not artifact_path.is_file():
+        raise FileNotFoundError(f"Release-derived artifact is missing: {artifact_path}")
+    if hashlib.sha256(artifact_path.read_bytes()).hexdigest() != artifact["sha256"]:
+        raise ValueError(f"Release-derived artifact fingerprint mismatch: {artifact_path}")
+EXPECTED_FORMAL_ARTIFACTS = {
+    "outputs/metrics/test_metrics.csv",
+    "outputs/metrics/test_metrics_real_plus_synthetic.csv",
+    "outputs/tables/test_confusion_matrices.csv",
+    "outputs/tables/test_confusion_matrices_real_plus_synthetic.csv",
+    "outputs/figures/test_balanced_accuracy.png",
+    "outputs/figures/test_balanced_accuracy_real_plus_synthetic.png",
+    "outputs/figures/test_roc_curves.png",
+    "outputs/figures/test_roc_curves_real_plus_synthetic.png",
+    "outputs/metrics/training_condition_comparison.csv",
+    "outputs/figures/training_condition_comparison.png",
+    "outputs/metrics/test_metric_bootstrap_intervals.csv",
+    "outputs/tables/feature_set_balanced_accuracy_differences.csv",
+    "outputs/figures/test_balanced_accuracy_intervals.png",
+    "outputs/figures/feature_set_balanced_accuracy_differences.png",
+    "outputs/metrics/test_metric_bootstrap_intervals_real_plus_synthetic.csv",
+    "outputs/tables/training_condition_balanced_accuracy_differences.csv",
+    "outputs/figures/test_balanced_accuracy_intervals_real_plus_synthetic.png",
+    "outputs/figures/training_condition_balanced_accuracy_differences.png",
+}
+recorded_formal_artifacts = {
+    artifact["path"] for artifact in analysis_manifest.get("artifacts", {}).values()
+}
+if recorded_formal_artifacts != EXPECTED_FORMAL_ARTIFACTS:
+    raise ValueError("Release analysis manifest does not cover the exact formal artifacts")
 
 
 def read_csv(relative):
@@ -100,6 +172,16 @@ augmented_intervals = read_csv(
 condition_differences = read_csv(
     "outputs/tables/training_condition_balanced_accuracy_differences.csv"
 )
+```
+
+```{python}
+display(Markdown(
+    "**Artifact provenance:** canonical release `"
+    + release_id
+    + "`; analysis manifest `"
+    + analysis_manifest["manifest_sha256"]
+    + "`."
+))
 ```
 
 # Executive summary
@@ -185,7 +267,7 @@ flowchart LR
   S --> F
   F --> G["Repeated stratified CV and tuning"]
   G --> H["Fixed final pipelines"]
-  H --> I["One held-out evaluation"]
+  H --> I["One formal prediction release"]
   E --> I
   I --> J["Bootstrap uncertainty and explanation"]
 ```
@@ -429,6 +511,11 @@ Every paired interval includes zero. The available evidence therefore does not
 show a stable held-out advantage from adding eTIV, nWBV, and ASF.
 
 # Model explanations
+
+This section is explicitly post-hoc. Permutation importance reopens the
+held-out features and outcomes after the canonical prediction release. It is
+interpretation of fixed models on this sample, not another formal model
+evaluation, and it must not influence subsequent model development.
 
 Permutation importance provides one original-feature comparison across all 10
 fixed models. It measures the held-out balanced-accuracy change after

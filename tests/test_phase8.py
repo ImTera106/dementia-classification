@@ -1,28 +1,36 @@
-"""Tests for Phase 8 orchestration helpers."""
+"""Tests enforcing the development-only Phase 8 boundary."""
 
 from __future__ import annotations
 
-import pandas as pd
-import pytest
+import ast
+import inspect
+from pathlib import Path
 
-from src.phase8 import _comparison_table
+from src.phase8 import run_phase8
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_comparison_uses_matching_real_only_experiment() -> None:
-    real = pd.DataFrame(
-        {
-            "algorithm": ["svm", "svm"],
-            "feature_set": ["clinical", "clinical_imaging"],
-            "training_condition": ["real_only", "real_only"],
-            "balanced_accuracy": [0.70, 0.80],
-        }
-    )
-    augmented = real.copy()
-    augmented["training_condition"] = "real_plus_synthetic"
-    augmented["balanced_accuracy"] = [0.75, 0.78]
-    comparison = _comparison_table(real, augmented)
-    deltas = comparison.loc[
-        comparison["training_condition"] == "real_plus_synthetic",
-        "balanced_accuracy_delta_vs_real_only",
-    ].tolist()
-    assert deltas == pytest.approx([0.05, -0.02])
+def test_development_interface_cannot_receive_test_or_evaluation_inputs() -> None:
+    parameters = inspect.signature(run_phase8).parameters
+    assert "test_path" not in parameters
+    assert "evaluation_config" not in parameters
+
+
+def test_development_module_has_no_test_or_evaluation_dependencies() -> None:
+    source = (ROOT / "src/phase8.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    imported_modules = {
+        node.module
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module is not None
+    }
+    assert "src.evaluate" not in imported_modules
+    accessed_keys = {
+        node.slice.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Subscript)
+        and isinstance(node.slice, ast.Constant)
+        and isinstance(node.slice.value, str)
+    }
+    assert "test" not in accessed_keys

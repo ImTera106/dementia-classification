@@ -4,6 +4,13 @@
 
 random_state: 123
 
+experiment_algorithms:
+  - logistic_regression
+  - svm
+  - decision_tree
+  - random_forest
+  - xgboost
+
 split:
   test_size: 0.20
   stratify: true

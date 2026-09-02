@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin
 
-from src.evaluate import EvaluationError, evaluate_saved_models, run_evaluation_pipeline
+from src.evaluate import EvaluationError, evaluate_saved_models
 from src.utils.io import save_joblib
 
 
@@ -62,6 +62,8 @@ class DecisionOnlyModel(ClassifierMixin, BaseEstimator):
 def model_config() -> dict:
     """Return the two configured feature settings."""
     return {
+        "experiment_algorithms": list(ALGORITHMS),
+        "training_conditions": ["real_only", "real_plus_synthetic"],
         "split": {
             "subject_id_column": "subject_id",
             "target_column": "dementia",
@@ -126,8 +128,6 @@ def held_out_frame() -> pd.DataFrame:
 
 def manifest(root: Path) -> dict:
     """Save evaluation-only doubles and return a complete model manifest."""
-    probability_path = save_joblib(ProbabilityOnlyModel(), root / "prob.joblib")
-    decision_path = save_joblib(DecisionOnlyModel(), root / "decision.joblib")
     records = []
     for feature_set, columns in {
         "clinical": ["age", "education_years", "ses", "mmse", "sex"],
@@ -143,12 +143,16 @@ def manifest(root: Path) -> dict:
         ],
     }.items():
         for algorithm in ALGORITHMS:
+            model = DecisionOnlyModel() if algorithm == "svm" else ProbabilityOnlyModel()
+            model_path = save_joblib(
+                model, root / feature_set / f"{algorithm}.joblib"
+            )
             records.append(
                 {
                     "algorithm": algorithm,
                     "feature_set": feature_set,
                     "training_condition": "real_only",
-                    "path": str(decision_path if algorithm == "svm" else probability_path),
+                    "path": str(model_path),
                     "feature_columns": columns,
                     "selected_parameters": {},
                 }
@@ -179,28 +183,6 @@ class EvaluateTests(unittest.TestCase):
             self.assertEqual(len(confusion), 10)
             self.assertTrue((metrics["balanced_accuracy"] == 1.0).all())
             self.assertTrue((metrics["roc_auc"] == 1.0).all())
-
-    def test_evaluation_runner_saves_tables_and_figures(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            test_path = root / "test_real.csv"
-            held_out_frame().to_csv(test_path, index=False)
-            output_paths = {
-                "test_metrics": root / "outputs" / "metrics.csv",
-                "test_predictions": root / "outputs" / "predictions.csv",
-                "test_confusion_matrices": root / "outputs" / "confusion.csv",
-                "test_balanced_accuracy_figure": root / "outputs" / "balanced.png",
-                "test_roc_figure": root / "outputs" / "roc.png",
-            }
-            paths = run_evaluation_pipeline(
-                test_path,
-                manifest=manifest(root),
-                model_config=model_config(),
-                evaluation_config=evaluation_config(),
-                output_paths=output_paths,
-            )
-            self.assertEqual(len(paths), 5)
-            self.assertTrue(all(path.is_file() for path in paths.values()))
 
     def test_xgboost_runtime_must_match_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

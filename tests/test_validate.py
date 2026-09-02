@@ -5,6 +5,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -137,20 +138,23 @@ class ValidateTests(unittest.TestCase):
     def test_runner_saves_two_tables_and_two_figures(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            predictions_path = root / "predictions.csv"
-            prediction_frame().to_csv(predictions_path, index=False)
             output_paths = {
                 "test_metric_bootstrap_intervals": root / "intervals.csv",
                 "feature_set_balanced_accuracy_differences": root / "differences.csv",
                 "test_balanced_accuracy_intervals_figure": root / "intervals.png",
                 "feature_set_balanced_accuracy_differences_figure": root / "differences.png",
             }
-            paths = run_validation_pipeline(
-                predictions_path,
-                validation_config=validation_config(),
-                evaluation_config=evaluation_config(),
-                output_paths=output_paths,
-            )
+            with patch(
+                "src.validate.load_evaluation_release",
+                return_value=(prediction_frame(), {}),
+            ):
+                paths = run_validation_pipeline(
+                    root / "release",
+                    frozen_manifest={},
+                    validation_config=validation_config(),
+                    evaluation_config=evaluation_config(),
+                    output_paths=output_paths,
+                )
             self.assertEqual(len(paths), 4)
             self.assertTrue(all(path.is_file() for path in paths.values()))
 
@@ -207,10 +211,6 @@ class ValidateTests(unittest.TestCase):
     def test_training_condition_runner_saves_two_tables_and_figures(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            reference_path = root / "reference.csv"
-            comparison_path = root / "comparison.csv"
-            prediction_frame().to_csv(reference_path, index=False)
-            augmented_prediction_frame().to_csv(comparison_path, index=False)
             output_paths = {
                 "synthetic_test_metric_bootstrap_intervals": root / "intervals.csv",
                 "training_condition_balanced_accuracy_differences": root
@@ -220,12 +220,19 @@ class ValidateTests(unittest.TestCase):
                 "training_condition_balanced_accuracy_differences_figure": root
                 / "differences.png",
             }
-            paths = run_training_condition_validation_pipeline(
-                reference_path,
-                comparison_path,
-                validation_config=validation_config(),
-                evaluation_config=evaluation_config(),
-                output_paths=output_paths,
+            canonical = pd.concat(
+                [prediction_frame(), augmented_prediction_frame()], ignore_index=True
             )
+            with patch(
+                "src.validate.load_evaluation_release",
+                return_value=(canonical, {}),
+            ):
+                paths = run_training_condition_validation_pipeline(
+                    root / "release",
+                    frozen_manifest={},
+                    validation_config=validation_config(),
+                    evaluation_config=evaluation_config(),
+                    output_paths=output_paths,
+                )
             self.assertEqual(len(paths), 4)
             self.assertTrue(all(path.is_file() for path in paths.values()))

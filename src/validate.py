@@ -10,8 +10,8 @@ from typing import Any, Final
 import numpy as np
 import pandas as pd
 
-from src.tune import REQUIRED_ALGORITHMS
-from src.utils.io import load_yaml_config
+from src.evaluation_release import load_evaluation_release
+from src.utils.io import load_json, load_yaml_config
 from src.utils.metrics import SUPPORTED_METRICS, calculate_classification_metrics
 from src.utils.plotting import (
     plot_balanced_accuracy_intervals,
@@ -20,6 +20,13 @@ from src.utils.plotting import (
 )
 
 LOGGER = logging.getLogger(__name__)
+REQUIRED_ALGORITHMS: Final[tuple[str, ...]] = (
+    "logistic_regression",
+    "svm",
+    "decision_tree",
+    "random_forest",
+    "xgboost",
+)
 
 DEFAULT_PATHS_CONFIG: Final[Path] = Path("config/paths.yaml")
 DEFAULT_EVALUATION_CONFIG: Final[Path] = Path("config/evaluation_config.yaml")
@@ -422,17 +429,18 @@ def calculate_training_condition_bootstrap_validation(
 
 
 def run_validation_pipeline(
-    predictions_path: str | Path,
+    release_dir: str | Path,
     *,
+    frozen_manifest: dict[str, Any],
     validation_config: dict[str, Any],
     evaluation_config: dict[str, Any],
     output_paths: dict[str, Any],
 ) -> dict[str, Path]:
     """Load fixed predictions, calculate intervals, and save Phase 5 outputs."""
-    input_path = Path(predictions_path)
-    if not input_path.is_file():
-        raise FileNotFoundError(f"Held-out predictions not found: {input_path}")
-    predictions = pd.read_csv(input_path, dtype={"subject_id": str})
+    predictions, _ = load_evaluation_release(release_dir, frozen_manifest)
+    predictions = predictions.loc[
+        predictions["training_condition"] == "real_only"
+    ].drop(columns="experiment_id", errors="ignore")
     intervals, differences = calculate_bootstrap_validation(
         predictions, validation_config, evaluation_config
     )
@@ -462,25 +470,21 @@ def run_validation_pipeline(
 
 
 def run_training_condition_validation_pipeline(
-    reference_predictions_path: str | Path,
-    comparison_predictions_path: str | Path,
+    release_dir: str | Path,
     *,
+    frozen_manifest: dict[str, Any],
     validation_config: dict[str, Any],
     evaluation_config: dict[str, Any],
     output_paths: dict[str, Any],
 ) -> dict[str, Path]:
     """Save augmented intervals and paired condition differences from predictions."""
-    reference_path = Path(reference_predictions_path)
-    comparison_path = Path(comparison_predictions_path)
-    for path in (reference_path, comparison_path):
-        if not path.is_file():
-            raise FileNotFoundError(f"Held-out predictions not found: {path}")
-    reference_predictions = pd.read_csv(
-        reference_path, dtype={"subject_id": str}
-    )
-    comparison_predictions = pd.read_csv(
-        comparison_path, dtype={"subject_id": str}
-    )
+    predictions, _ = load_evaluation_release(release_dir, frozen_manifest)
+    reference_predictions = predictions.loc[
+        predictions["training_condition"] == "real_only"
+    ].drop(columns="experiment_id", errors="ignore")
+    comparison_predictions = predictions.loc[
+        predictions["training_condition"] == "real_plus_synthetic"
+    ].drop(columns="experiment_id", errors="ignore")
     intervals, differences = calculate_training_condition_bootstrap_validation(
         reference_predictions,
         comparison_predictions,
@@ -550,17 +554,22 @@ def main() -> int:
         paths = load_yaml_config(args.paths_config)
         validation_config = load_yaml_config(args.validation_config)
         evaluation_config = load_yaml_config(args.evaluation_config)
+        frozen_manifest = load_json(paths["frozen_experiment_manifest"])
+        release_dir = Path(paths["outputs"]["final_evaluation_dir"]) / str(
+            frozen_manifest["manifest_sha256"]
+        )[:16]
         if args.analysis == "real_only":
             run_validation_pipeline(
-                paths["outputs"]["test_predictions"],
+                release_dir,
+                frozen_manifest=frozen_manifest,
                 validation_config=validation_config,
                 evaluation_config=evaluation_config,
                 output_paths=paths["outputs"],
             )
         else:
             run_training_condition_validation_pipeline(
-                paths["outputs"]["test_predictions"],
-                paths["outputs"]["synthetic_test_predictions"],
+                release_dir,
+                frozen_manifest=frozen_manifest,
                 validation_config=validation_config,
                 evaluation_config=evaluation_config,
                 output_paths=paths["outputs"],

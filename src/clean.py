@@ -16,7 +16,7 @@ from typing import Any, Final
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from src.utils.io import load_yaml_config
+from src.utils.io import load_yaml_config, sha256_file
 
 LOGGER = logging.getLogger(__name__)
 
@@ -281,6 +281,10 @@ def run_cleaning_pipeline(
         subject_level.to_csv(paths["subject_level"], index=False)
         train.to_csv(paths["train"], index=False)
         test.to_csv(paths["test"], index=False)
+        summary["file_sha256"] = {
+            "train": sha256_file(paths["train"]),
+            "test": sha256_file(paths["test"]),
+        }
         paths["assessment"].write_text(json.dumps(assessment, indent=2), encoding="utf-8")
         paths["split_summary"].write_text(json.dumps(summary, indent=2), encoding="utf-8")
     except OSError as exc:

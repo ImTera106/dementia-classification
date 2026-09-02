@@ -35,6 +35,7 @@ outputs/logs/*
 outputs/data/*
 outputs/tuning/*
 outputs/predictions/*
+outputs/final_evaluation/*
 !outputs/**/.gitkeep
 
 # Rendered report outputs

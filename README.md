@@ -49,6 +49,7 @@ data/            Local raw, cleaned, and processed data (ignored)
 docs/            Project handoff and migration decisions
 models/          Serialized fitted pipelines (ignored)
 outputs/         Generated metrics, tables, predictions, and figures (ignored)
+public_results/  Release-specific aggregate verification packages
 report/          Quarto report source (generated HTML is not retained)
 src/             Cleaning, modeling, evaluation, validation, and explanation
 tests/           Targeted unit and artifact-contract tests
@@ -89,23 +90,45 @@ python -m src.clean
 python -m src.baseline
 python -m src.tune
 python -m src.train
-python -m src.evaluate
-python -m src.validate
-python -m src.explain
 python -m src.phase8
-python -m src.validate --analysis training_condition
+python -m src.freeze_experiment
+python -m src.final_evaluate
+python -m src.analyze_release
+python -m src.explain
 ```
 
-`src.phase8` fits synthetic generators only on real training folds during
-tuning, scores on real validation folds, and reserves the same entirely real
-test subjects for final comparison. Do not iterate on models, features,
+`src.phase8` is development-only: it fits synthetic generators only on real
+training folds during tuning, scores on real validation folds, and fits the
+augmented final models without accepting or resolving a test path.
+`src.freeze_experiment` refuses a dirty Git worktree by default and records the
+complete experiment grid, selected settings, Git commit, and SHA-256 fingerprints
+for the training data, configurations, model artifacts, and original test split.
+It copies the expected test fingerprint from the split summary without opening
+the test file. `src.final_evaluate` verifies all development-side fingerprints,
+refuses to overwrite an existing release, then opens the entirely real test
+partition, verifies its fingerprint, and scores both training conditions
+together. It atomically publishes one manifest-addressed
+`frozen_predictions.csv` and an `evaluation_receipt.json` recording its
+fingerprints. Do not iterate on models, features,
 augmentation settings, thresholds, or environment versions after inspecting
 held-out results.
 
-The final validation command reads the two saved held-out prediction files,
-uses identical class-stratified subject draws across training conditions, and
-writes augmented-model intervals plus paired augmented-minus-real-only
-balanced-accuracy intervals. It does not load or refit models.
+`src.analyze_release` verifies that canonical prediction release and regenerates
+all formal metrics, confusion tables, bootstrap summaries, comparisons, and
+figures without test data or fitted models. It writes an analysis manifest that
+fingerprints every derived formal-evaluation artifact, and it can be rerun to
+recover from an interrupted analysis without regenerating predictions.
+
+`src.explain` is a separate, explicitly post-hoc interpretation step. Its
+permutation importance reopens the held-out features and outcomes, so the
+project claims one formal prediction release—not that the test file is opened
+only once for every downstream purpose. Explanations must not feed back into
+model development.
+
+Legacy output parity may be checked with `python -m src.check_legacy_parity`
+and its required explicit artifact arguments. A match demonstrates computational
+equivalence only; it does not make the previously inspected test partition
+independent again.
 
 Optionally render the report locally after the saved artifacts exist:
 
@@ -115,6 +138,21 @@ quarto render report/report.qmd
 
 The report reads saved JSON, CSV, and PNG artifacts. Rendering does not rerun
 cleaning, tuning, training, evaluation, bootstrap validation, or SHAP.
+
+After rendering a report for the verified release, create a public aggregate
+verification package with:
+
+```bash
+python -m src.publish_verification
+```
+
+Publication verifies the canonical release and every formal-analysis hash,
+rejects subject-level columns and likely OASIS identifiers, and creates a
+non-overwriting `public_results/<release-id>/` package. It includes aggregate
+CV, held-out, bootstrap, synthetic-quality, and feature-importance evidence,
+selected figures, the rendered report, and a verification manifest. It never
+includes OASIS rows, subject IDs, predictions, split membership, synthetic
+subjects, or fitted models. No package is created from legacy outputs alone.
 
 Run the test suite with:
 

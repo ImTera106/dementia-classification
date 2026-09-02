@@ -16,18 +16,19 @@ Algorithms:
 - decision_tree
 - random_forest
 - xgboost
-
+  
 Training conditions:
 - real_only
 - real_plus_synthetic
 
-All experiments must use the same held-out, entirely real test set.
+
+All experiments must use the same held-out, entirely real 
+test set.
 
 ## Data rules
 - Never overwrite `data/raw/`.
 - Main modeling table: one row per subject, selected at the highest visit number.
-- Retain raw numeric `education_years` as a predictor; do not bin it or create
-  an `education_level` feature.
+- Retain raw numeric `education_years` as a predictor; do not bin it or create  an `education_level` feature.
 - Trajectory features are deferred as an optional extension.
 - Split by subject before learned preprocessing or synthesis.
 - The same subject must never appear in both train and test.
@@ -69,7 +70,14 @@ All experiments must use the same held-out, entirely real test set.
 - `models.py`: construct estimators and model-specific pipelines.
 - `tune.py`: cross-validated hyperparameter search.
 - `train.py`: fit and save final models.
-- `evaluate.py`: evaluate saved models on the real test data.
+- `evaluate.py`: pure helpers for scoring already-fitted models.
+- `freeze_experiment.py`: freeze development artifacts without test access.
+- `final_evaluate.py`: verify the frozen experiment and evaluate the real test data.
+- `evaluation_release.py`: atomically publish and verify canonical test predictions.
+- `analyze_release.py`: regenerate fingerprinted formal results from frozen predictions.
+- `check_legacy_parity.py`: compare legacy and canonical outputs without test access.
+- `publish_verification.py`: publish only verified, privacy-safe aggregate evidence.
+- `validate.py`: analyze only the verified canonical prediction release.
 - `explain.py`: feature importance and SHAP.
 - `predict.py`: inference.
 - `main.py`: orchestration only.

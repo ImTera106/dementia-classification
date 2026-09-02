@@ -13,7 +13,10 @@ data:
 models_dir: models
 model_manifest: models/real_only/model_manifest.json
 synthetic_model_manifest: models/real_plus_synthetic/model_manifest.json
+frozen_experiment_manifest: models/frozen_experiment_manifest.json
+public_verification_dir: public_results
 outputs:
+  final_evaluation_dir: outputs/final_evaluation
   data_assessment: outputs/data/data_assessment.json
   split_summary: outputs/data/split_summary.json
   baseline_fold_metrics: outputs/metrics/baseline_cv_folds.csv
@@ -26,14 +29,12 @@ outputs:
   synthetic_tuning_best_parameters: outputs/tuning/real_plus_synthetic/best_parameters.json
   synthetic_quality: outputs/metrics/synthetic_quality.json
   synthetic_test_metrics: outputs/metrics/test_metrics_real_plus_synthetic.csv
-  synthetic_test_predictions: outputs/predictions/test_predictions_real_plus_synthetic.csv
   synthetic_test_confusion_matrices: outputs/tables/test_confusion_matrices_real_plus_synthetic.csv
   synthetic_test_balanced_accuracy_figure: outputs/figures/test_balanced_accuracy_real_plus_synthetic.png
   synthetic_test_roc_figure: outputs/figures/test_roc_curves_real_plus_synthetic.png
   training_condition_comparison: outputs/metrics/training_condition_comparison.csv
   training_condition_comparison_figure: outputs/figures/training_condition_comparison.png
   test_metrics: outputs/metrics/test_metrics.csv
-  test_predictions: outputs/predictions/test_predictions.csv
   test_confusion_matrices: outputs/tables/test_confusion_matrices.csv
   test_balanced_accuracy_figure: outputs/figures/test_balanced_accuracy.png
   test_roc_figure: outputs/figures/test_roc_curves.png

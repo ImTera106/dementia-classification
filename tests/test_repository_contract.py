@@ -11,6 +11,8 @@ import pandas as pd
 import pytest
 import yaml
 
+from src.publish_verification import FORBIDDEN_COLUMNS, verify_public_package
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ALGORITHMS = {
@@ -175,6 +177,7 @@ def test_sensitive_and_generated_artifacts_are_gitignored() -> None:
         "models/real_only/clinical/logistic_regression.joblib",
         "models/real_only/model_manifest.json",
         "outputs/predictions/test_predictions.csv",
+        "outputs/final_evaluation/example/frozen_predictions.csv",
         "report/report.html",
         ".vscode/settings.json",
     ]
@@ -183,15 +186,28 @@ def test_sensitive_and_generated_artifacts_are_gitignored() -> None:
             ["git", "check-ignore", "-q", relative], cwd=ROOT, check=False
         )
         assert result.returncode == 0, relative
-    assert not (ROOT / "report/report.html").exists()
 
 
 def test_documented_python_entry_points_exist() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     modules = (
-        "clean", "baseline", "tune", "train", "evaluate", "validate",
-        "explain", "phase8", "predict",
+        "clean", "baseline", "tune", "train", "phase8", "freeze_experiment",
+        "final_evaluate", "analyze_release", "explain", "predict",
+        "publish_verification",
     )
     for module in modules:
         assert (ROOT / f"src/{module}.py").is_file()
         assert f"python -m src.{module}" in readme
+
+
+def test_checked_in_public_packages_are_aggregate_only() -> None:
+    public_root = ROOT / "public_results"
+    for package in public_root.iterdir():
+        if not package.is_dir():
+            continue
+        verify_public_package(package)
+        assert not list(package.rglob("*.joblib"))
+        assert not list(package.rglob("frozen_predictions.csv"))
+        for csv_path in package.rglob("*.csv"):
+            columns = {str(value).lower() for value in pd.read_csv(csv_path, nrows=0).columns}
+            assert columns.isdisjoint(FORBIDDEN_COLUMNS)

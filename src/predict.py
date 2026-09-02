@@ -42,7 +42,7 @@ def resolve_manifest_path(
         key = "synthetic_model_manifest"
     else:
         valid = ", ".join(sorted(TRAINING_CONDITIONS))
-        raise InferenceError(
+        raise InferenceError( 
             f"Unknown training condition {training_condition!r}; choose: {valid}"
         )
     try:

@@ -17,6 +17,7 @@ from src.clean import (
     run_cleaning_pipeline,
     split_subjects,
 )
+from src.utils.io import sha256_file
 
 
 def raw_frame(batch: int = 0) -> pd.DataFrame:
@@ -118,4 +119,6 @@ class CleanTests(unittest.TestCase):
             self.assertGreater(int(saved_subjects[["ses", "mmse"]].isna().sum().sum()), 0)
             summary = json.loads(paths["split_summary"].read_text(encoding="utf-8"))
             self.assertEqual(summary["subject_overlap_count"], 0)
+            self.assertEqual(summary["file_sha256"]["train"], sha256_file(paths["train"]))
+            self.assertEqual(summary["file_sha256"]["test"], sha256_file(paths["test"]))
             self.assertNotIn("imputation", paths)

@@ -3,12 +3,25 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
 import joblib
 import yaml
+
+
+def sha256_file(path: str | Path) -> str:
+    """Return the SHA-256 digest of one required file without modifying it."""
+    input_path = Path(path)
+    if not input_path.is_file():
+        raise FileNotFoundError(f"File to fingerprint not found: {input_path}")
+    digest = hashlib.sha256()
+    with input_path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def require_package_version(package: str, expected: str, *, context: str) -> str:
